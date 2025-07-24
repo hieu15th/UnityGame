@@ -95,12 +95,12 @@ public class BagLayoutAdjuster : MonoBehaviour
             using (BinaryReader reader = new BinaryReader(ms))
             {
                 int bagSize = ReadInt32BigEndian(reader);
-                Debug.Log($"\ud83c\udf92 T\u00fai c\u00f3 {bagSize} \u00f4 m\u1edf kh\u00f3a (t\u1ed5ng {slotCount})");
+                //Debug.Log($"\ud83c\udf92 T\u00fai c\u00f3 {bagSize} \u00f4 m\u1edf kh\u00f3a (t\u1ed5ng {slotCount})");
 
                 SpawnSlots();
 
                 int itemCount = ReadInt32BigEndian(reader);
-                Debug.Log($"\ud83d\udce6 T\u1ed5ng s\u1ed1 item: {itemCount}");
+                //Debug.Log($"\ud83d\udce6 T\u1ed5ng s\u1ed1 item: {itemCount}");
 
                 Dictionary<int, ItemData> itemMap = new Dictionary<int, ItemData>();
 
@@ -179,6 +179,56 @@ public class BagLayoutAdjuster : MonoBehaviour
                         Debug.LogWarning($"\u26a0\ufe0f Slot {i}: Kh\u00f4ng c\u00f3 Image tr\u00ean Slot");
                         continue;
                     }
+                    var borderEffectTransform = slot.transform.Find("BorderEffect");
+                    var dotEffect = borderEffectTransform?.GetComponent<DotBorderEffect>();
+                    if (borderEffectTransform == null)
+                    {
+                        Debug.LogWarning($"⚠️ Slot {i}: Không tìm thấy object BorderEffect");
+                        continue;
+                    }
+
+                    if (dotEffect == null)
+                    {
+                        Debug.LogWarning($"⚠️ Slot {i}: BorderEffect không có component DotBorderEffect");
+                        continue;
+                    }
+
+                    if (dotEffect != null)
+                    {
+                        int dotCount = 0;
+                        Color dotColor = Color.black;
+
+                        if (itemMap.TryGetValue(i, out ItemData item1) && item1 != null)
+                        {
+                            int upgrade = item1.upgrade;
+
+                            if (upgrade > 0)
+                            {
+                                // dotCount tuần hoàn từ 1–4
+                                dotCount = (upgrade - 1) % 4 + 1;
+
+                                // group tăng mỗi 4 cấp (0:1–4, 1:5–8, ...)
+                                int group = (upgrade - 1) / 4;
+
+                                dotColor = group switch
+                                {
+                                    0 => Color.green,
+                                    1 => Color.yellow,
+                                    2 => Color.cyan,
+                                    3 => Color.red,
+                                    4 => Color.magenta,
+                                    _ => Color.white
+                                };
+                            }
+                        }
+
+                        dotEffect.Init(dotColor, dotCount);
+                    }
+                    else {
+                        Debug.LogWarning($"Bị null");
+
+                    }
+
 
                     if (itemMap.TryGetValue(i, out ItemData item))
                     {

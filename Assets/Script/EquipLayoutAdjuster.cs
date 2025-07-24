@@ -267,7 +267,54 @@ public class EquipLayoutAdjuster : MonoBehaviour
         var slot = equipSlots[index];
         var icon = slot.Find("Item")?.GetComponent<Image>();
         var background = slot.GetComponent<Image>();
+        var borderEffectTransform = slot.transform.Find("BorderEffect");
+        var dotEffect = borderEffectTransform?.GetComponent<DotBorderEffect>();
+        if (borderEffectTransform == null)
+        {
+            Debug.LogWarning($"⚠️ Slot {index}: Không tìm thấy object BorderEffect");
+        }
 
+        if (dotEffect == null)
+        {
+            Debug.LogWarning($"⚠️ Slot {index}: BorderEffect không có component DotBorderEffect");
+        }
+
+        if (dotEffect != null)
+        {
+            int dotCount = 0;
+            Color dotColor = Color.black;
+
+            if (equippedItemMap.TryGetValue(index, out ItemData item) && item != null)
+            {
+                int upgrade = item.upgrade;
+
+                if (upgrade > 0)
+                {
+                    // dotCount tuần hoàn từ 1–4
+                    dotCount = (upgrade - 1) % 4 + 1;
+
+                    // group tăng mỗi 4 cấp (0:1–4, 1:5–8, ...)
+                    int group = (upgrade - 1) / 4;
+
+                    dotColor = group switch
+                    {
+                        0 => Color.green,
+                        1 => Color.yellow,
+                        2 => Color.cyan,
+                        3 => Color.red,
+                        4 => Color.magenta,
+                        _ => Color.white
+                    };
+                }
+            }
+
+            dotEffect.Init(dotColor, dotCount);
+        }
+        else
+        {
+            Debug.LogWarning($"Bị null");
+
+        }
         if (icon != null)
         {
             if (imgId == -1)
