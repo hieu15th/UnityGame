@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using TMPro;
@@ -55,120 +56,67 @@ public class PlayerController : MonoBehaviour
 
         UpdatePlayerSortingOrder();
     }
-    void ApplyParts(GameObject player, int hair, int body, int head, int facehair, int helmet, int armor,
-                            int hand, int leg, int boot, int weapon, int cloak)
+
+    public void HandleNpcList(byte[] data)
     {
-        var baseParts = new (string partName, int index)[]
-        {
-        ("body", body),
-        ("hair", hair),
-        ("head", head),
-        ("facehair", facehair),
-        ("helmet", helmet),
-        ("shoulder_l", hand),
-        ("armor_l", armor),
-        ("weapon", weapon),
-        ("shoulder_r", hand),
-        ("armor_r", armor),
-        ("foot_l", leg),
-        ("boot_l", boot),
-        ("foot_r", leg),
-        ("boot_r", boot),
-        ("armor", armor),
-        ("cloak", cloak),
-        };
+        Debug.Log($"📦 Data nhận được: {data.Length} byte. First 10 bytes: {string.Join(",", data.Take(10))}");
 
-        //Debug.Log($"🧩 Bắt đầu ApplyParts cho Player: {player.name}");
-
-        foreach (var part in baseParts)
+        if (data.Length < 1)
         {
-            //Debug.Log($"➡️ Apply part: {part.partName} với index: {part.index}");
-            ApplySinglePart(player, part.partName, part.index);
+            Debug.LogError("❌ Payload quá ngắn.");
+            return;
         }
 
-        Debug.Log("✅ Hoàn tất ApplyParts.");
+        byte nameLen = data[0];
+        if (nameLen <= 0 || nameLen > data.Length - 1)
+        {
+            Debug.LogError($"❌ nameLen không hợp lệ: {nameLen}");
+            return;
+        }
+
+        int bytesRemaining = data.Length - 1 - nameLen;
+        int dataNeeded = 4 + 4 + 4 + 11 * 4; // = 56 byte
+
+        if (bytesRemaining < dataNeeded)
+        {
+            Debug.LogError($"❌ Không đủ dữ liệu để đọc NPC. nameLen={nameLen}, còn lại={bytesRemaining}, cần={dataNeeded}");
+            return;
+        }
+
+
+        string name = Encoding.UTF8.GetString(data, 1, nameLen);
+        int offset = 1 + nameLen;
+
+        try
+        {
+            int id = BitConverter.ToInt32(data, offset); offset += 4;
+            float x = BitConverter.ToSingle(data, offset); offset += 4;
+            float y = BitConverter.ToSingle(data, offset); offset += 4;
+
+            int head = BitConverter.ToInt32(data, offset); offset += 4;
+            int facehair = BitConverter.ToInt32(data, offset); offset += 4;
+            int helmet = BitConverter.ToInt32(data, offset); offset += 4;
+            int hair = BitConverter.ToInt32(data, offset); offset += 4;
+            int body = BitConverter.ToInt32(data, offset); offset += 4;
+            int armor = BitConverter.ToInt32(data, offset); offset += 4;
+            int leg = BitConverter.ToInt32(data, offset); offset += 4;
+            int boot = BitConverter.ToInt32(data, offset); offset += 4;
+            int hand = BitConverter.ToInt32(data, offset); offset += 4;
+            int cloak = BitConverter.ToInt32(data, offset); offset += 4;
+            int weapon = BitConverter.ToInt32(data, offset); offset += 4;
+
+            Debug.Log($"📘 NPC: {name}, ID: {id}");
+
+            Npc npc = new Npc(id, name, x, y,
+                head, facehair, helmet, hair, body, armor, hand, leg, boot, weapon, cloak);
+
+            NpcManager.Instance.SpawnNpc(npc);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"❌ Lỗi khi đọc NPC: {ex.Message}");
+        }
     }
-
-
-    public static readonly Dictionary<string, string> PartPathMap = new Dictionary<string, string>
-    {
-        // ✅ Đầu
-        { "hair",        "UnitRoot/Root/BodySet/P_Body/HeadSet/P_Head/P_Hair/7_Hair" },
-        { "head",        "UnitRoot/Root/BodySet/P_Body/HeadSet/P_Head/P_Head/5_Head" },
-        { "facehair",    "UnitRoot/Root/BodySet/P_Body/HeadSet/P_Head/P_Mustache/6_FaceHair" },
-        { "helmet",      "UnitRoot/Root/BodySet/P_Body/HeadSet/P_Head/P_Helmet/11_Helmet1" },
-
-        // ✅ Tay trái
-        { "shoulder_l",    "UnitRoot/Root/BodySet/P_Body/ArmSet/ArmR/P_RArm/P_Arm/-20_R_Arm" },
-        { "armor_l",       "UnitRoot/Root/BodySet/P_Body/ArmSet/ArmR/P_RArm/P_Arm/-20_R_Arm/P_Shoulder/-15_R_Shoulder" },
-        { "weapon",      "UnitRoot/Root/BodySet/P_Body/ArmSet/ArmR/P_RArm/P_Weapon/R_Weapon"},
-
-        // ✅ Tay phải
-        { "shoulder_r",    "UnitRoot/Root/BodySet/P_Body/ArmSet/ArmL/P_LArm/P_Arm/20_L_Arm" },
-        { "armor_r",       "UnitRoot/Root/BodySet/P_Body/ArmSet/ArmL/P_LArm/P_Arm/20_L_Arm/P_Shoulder/25_L_Shoulder" },
-
-
-        // ✅ Thân trên
-        { "body",        "UnitRoot/Root/BodySet/P_Body/Body" },
-        { "cloak",        "UnitRoot/Root/BodySet/P_Body/P_Back/Back" },
-        { "armor",       "UnitRoot/Root/BodySet/P_Body/Body/P_ClothBody/ClothBody" },
-
-        // ✅ Chân trái
-        { "foot_l",       "UnitRoot/Root/P_RFoot/_12R_Foot" },
-        { "boot_l",      "UnitRoot/Root/P_RFoot/P_RCloth/_11R_Cloth" },
-
-        // ✅ Chân phải
-        { "foot_r",       "UnitRoot/Root/P_LFoot/_3L_Foot" },
-        { "boot_r",      "UnitRoot/Root/P_LFoot/P_LCloth/_2L_Cloth" },
-
-        // ✅ Thanh máu (nếu cần dùng lại sau)
-        //{ "health_bar",  "Canvas/Heath_Bar" },
-    };
-
-
-
-
-    void ApplySinglePart(GameObject player, string partName, int partIndex)
-    {
-        if (partIndex < 0)
-        {
-            Debug.LogWarning($"⚠️ Bỏ qua '{partName}' vì partIndex < 0");
-            return;
-        }
-
-        if (!PartPathMap.TryGetValue(partName.ToLower(), out string path))
-        {
-            Debug.LogWarning($"❌ Không có đường dẫn cho partName '{partName}' trong PartPathMap.");
-            return;
-        }
-
-        Transform partObj = player.transform.Find(path);
-        if (partObj == null)
-        {
-            Debug.LogWarning($"❌ Không tìm thấy GameObject theo path '{path}' trong player.");
-            return;
-        }
-
-        var resolver = partObj.GetComponent<SpriteResolver>();
-        if (resolver == null)
-        {
-            Debug.LogWarning($"❌ GameObject tại '{path}' không có SpriteResolver.");
-            return;
-        }
-
-        if (resolver.spriteLibrary == null)
-        {
-            Debug.LogWarning($"⚠️ '{partName}' không có Sprite Library Asset.");
-        }
-
-        string category = partName.ToLower();
-        string label = $"{partIndex}";
-
-        //Debug.Log($"🎯 Đặt Category: '{category}', Label: '{label}' cho part '{partName}' tại '{path}'");
-
-        resolver.SetCategoryAndLabel(category, label);
-    }
-
 
 
 
@@ -436,8 +384,7 @@ public class PlayerController : MonoBehaviour
             Debug.LogWarning("[DEBUG] Không tìm thấy thanh máu với tag 'Health' hoặc dưới HealthBar/Health.");
         }
 
-        // 👉 Gán part đầy đủ
-        ApplyParts(player, hair, body, head, facehair, helmet,
+        PartManager.Instance.ApplyParts(player, hair, body, head, facehair, helmet,
                    armor, hand, leg, boot, weapon, cloak);
     }
 
@@ -468,7 +415,7 @@ public class PlayerController : MonoBehaviour
             }
             Debug.Log("Cập nhật lại player");
             // 👉 Gọi lại ApplyParts nếu player đã tồn tại
-            ApplyParts(existing, hair, body, head, facehair, helmet,
+            PartManager.Instance.ApplyParts(existing, hair, body, head, facehair, helmet,
                        armor, hand, leg, boot, weapon, cloak);
 
             return;
@@ -510,7 +457,7 @@ public class PlayerController : MonoBehaviour
         previousPositions[name] = new Vector3(x, y, 0);
 
         // 👉 Gán parts như người chơi chính
-        ApplyParts(player, hair, body, head, facehair, helmet,
+        PartManager.Instance.ApplyParts(player, hair, body, head, facehair, helmet,
                    armor, hand, leg, boot, weapon, cloak);
 
     }

@@ -22,6 +22,7 @@ public class Main : MonoBehaviour
     private const sbyte CMD_ITEM_EQUIP = -119;
     private const sbyte CMD_SEND_ALERT = -117;
     private const sbyte CMD_PLAYER_STATS = -116;
+    private const sbyte CMD_REQUEST_NPC = -115;
 
     private readonly ConcurrentQueue<Action> mainThreadActions = new ConcurrentQueue<Action>();
     [SerializeField] private PlayerController playerHandler;
@@ -34,11 +35,14 @@ public class Main : MonoBehaviour
     void Start()
     {
         SendPlayerRequest();
+        SendNpcRequest();
         isRunning = true;
         listenThread = new Thread(ListenToServer);
         listenThread.IsBackground = true;
         listenThread.Start();
     }
+
+
 
     void Update()
     {
@@ -57,7 +61,26 @@ public class Main : MonoBehaviour
     {
         mainThreadActions.Enqueue(action);
     }
+    private void SendNpcRequest()
+    {
+        try
+        {
+            var writer = SocketManager.Instance.Writer;
+            if (writer == null)
+            {
+                Debug.LogError("Writer chưa khởi tạo.");
+                return;
+            }
 
+            writer.Write(CMD_REQUEST_NPC);
+            writer.Write((ushort)0);
+            writer.Flush();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError("Lỗi khi gửi CMD -115: " + ex.Message);
+        }
+    }
     private void SendPlayerRequest()
     {
         try
@@ -170,6 +193,9 @@ public class Main : MonoBehaviour
                             else
                                 Debug.LogWarning("⚠️ CharUI chưa được gán trong Main");
                         });
+                        break;
+                    case CMD_REQUEST_NPC:
+                        EnqueueMainThread(() => playerHandler.HandleNpcList(data));
                         break;
                     default:
                         Debug.Log("📩 Nhận command khác: " + cmd);

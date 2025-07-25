@@ -5,7 +5,7 @@ using UnityEngine.EventSystems;
 public class DetectNearbyPrefabs_Circle : MonoBehaviour, IPointerClickHandler
 {
     public float detectRadius;              // Bán kính tìm
-    public string prefabTag = "Player";          // Tag của đối tượng cần tìm
+    public string prefabTag = "Npc";          // Tag của đối tượng cần tìm
     public LayerMask detectionLayer;             // Layer dùng để lọc Collider2D
 
     private List<GameObject> nearbyList = new List<GameObject>();
