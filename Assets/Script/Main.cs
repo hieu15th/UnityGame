@@ -23,6 +23,7 @@ public class Main : MonoBehaviour
     private const sbyte CMD_SEND_ALERT = -117;
     private const sbyte CMD_PLAYER_STATS = -116;
     private const sbyte CMD_REQUEST_NPC = -115;
+    private const sbyte CMD_SEND_NPC = -114;
 
     private readonly ConcurrentQueue<Action> mainThreadActions = new ConcurrentQueue<Action>();
     [SerializeField] private PlayerController playerHandler;
@@ -30,19 +31,28 @@ public class Main : MonoBehaviour
     [SerializeField] private EquipLayoutAdjuster charUI;
     [SerializeField] private BoxAlertUI boxAlertUI;
     [SerializeField] private OptionPlayer optionPlayer;
+    [SerializeField] private MenuManager menuManager;
 
 
     void Start()
     {
         SendPlayerRequest();
         SendNpcRequest();
+        StartListening();
+    }
+
+    private void StartListening()
+    {
+        if (listenThread != null && listenThread.IsAlive)
+        {
+            listenThread.Abort(); // Hoặc dùng flag để dừng thread cũ nếu cần
+        }
+
         isRunning = true;
         listenThread = new Thread(ListenToServer);
         listenThread.IsBackground = true;
         listenThread.Start();
     }
-
-
 
     void Update()
     {
@@ -106,6 +116,7 @@ public class Main : MonoBehaviour
     {
         try
         {
+            Debug.Log("123123123");
             var reader = SocketManager.Instance.Reader;
             while (isRunning)
             {
@@ -135,7 +146,12 @@ public class Main : MonoBehaviour
                         EnqueueMainThread(() =>
                         {
                             SocketManager.Instance.ResetConnection();
+                            isRunning = false;
+                            listenThread?.Interrupt();
+                            listenThread = null;
+                            Destroy(gameObject); // Hủy Main nếu là DontDestroyOnLoad
                             SceneManager.LoadScene("Login");
+
                         });
                         break;
                     case CMD_GETBAG:
@@ -194,6 +210,15 @@ public class Main : MonoBehaviour
                                 Debug.LogWarning("⚠️ CharUI chưa được gán trong Main");
                         });
                         break;
+                    case CMD_SEND_NPC:
+                        EnqueueMainThread(() =>
+                        {
+                            if (menuManager != null)
+                                menuManager.HandleMenu(data);
+                            else
+                                Debug.LogWarning("⚠️ MenuManager chưa được gán trong Main");
+                        });
+                        break;
                     case CMD_REQUEST_NPC:
                         EnqueueMainThread(() => playerHandler.HandleNpcList(data));
                         break;
@@ -209,7 +234,12 @@ public class Main : MonoBehaviour
             EnqueueMainThread(() =>
             {
                 SocketManager.Instance.ResetConnection();
+                isRunning = false;
+                listenThread?.Interrupt();
+                listenThread = null;
+                Destroy(gameObject); // Hủy Main nếu là DontDestroyOnLoad
                 SceneManager.LoadScene("Login");
+
             });
         }
     }

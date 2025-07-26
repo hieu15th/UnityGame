@@ -6207,6 +6207,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cd6f20c3154f90f40b0b860477efa67f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  menuPrefab: {fileID: 155355477095336348, guid: 5cafbd3fa01e592419dacaffbb786540,
+    type: 3}
 --- !u!61 &8281559250396955152
 BoxCollider2D:
   m_ObjectHideFlags: 0
