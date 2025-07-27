@@ -4,7 +4,7 @@ using UnityEngine.UI;
 public class ButtonClick : MonoBehaviour
 {
     public Animator animator;
-    public string triggerName = "isClick";
+    public string triggerName = "2_Attack";
 
     void OnMouseDown()
     {
@@ -15,6 +15,6 @@ public class ButtonClick : MonoBehaviour
         }
 
         animator.SetTrigger(triggerName);
-        Debug.Log("🖱️ Clicked on object. Trigger sent: " + triggerName);
+        //Debug.Log("🖱️ Clicked on object. Trigger sent: " + triggerName);
     }
 }
