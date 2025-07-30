@@ -15,13 +15,13 @@ public class MenuManager : MonoBehaviour
     public void HandleMenu(byte[] data)
     {
         menu.SetActive(true);
-        Debug.Log("📥 Bắt đầu xử lý HandleMenu...");
-        Debug.Log("📦 Tổng byte nhận: " + data.Length);
+        //Debug.Log("📥 Bắt đầu xử lý HandleMenu...");
+        //Debug.Log("📦 Tổng byte nhận: " + data.Length);
 
         StringBuilder hexDump = new StringBuilder();
         foreach (byte b in data)
-            hexDump.AppendFormat("{0:X2} ", b);
-        Debug.Log("🔍 Hex dump: " + hexDump);
+            //hexDump.AppendFormat("{0:X2} ", b);
+        //Debug.Log("🔍 Hex dump: " + hexDump);
 
         foreach (Transform child in contentParent)
             Destroy(child.gameObject);
@@ -35,10 +35,10 @@ public class MenuManager : MonoBehaviour
 
         // 🟡 Đọc npcId từ 4 byte đầu tiên
         int npcId = (data[index++] << 24) | (data[index++] << 16) | (data[index++] << 8) | data[index++];
-        Debug.Log("🆔 NPC ID = " + npcId);
+        //Debug.Log("🆔 NPC ID = " + npcId);
 
         int count = data[index++];
-        Debug.Log("📋 Tổng số menu: " + count);
+        //Debug.Log("📋 Tổng số menu: " + count);
 
         for (int i = 0; i < count; i++)
         {
@@ -50,7 +50,7 @@ public class MenuManager : MonoBehaviour
             string itemText = Encoding.UTF8.GetString(data, index, length);
             index += length;
 
-            Debug.Log($"✅ Menu[{i}] = \"{itemText}\"");
+            //Debug.Log($"✅ Menu[{i}] = \"{itemText}\"");
 
             GameObject newButtonObj = Instantiate(buttonPrefab, contentParent);
             newButtonObj.SetActive(true);
@@ -92,13 +92,15 @@ public class MenuManager : MonoBehaviour
             }
         }
 
-        Debug.Log("✅ Kết thúc xử lý HandleMenu.");
+        //Debug.Log("✅ Kết thúc xử lý HandleMenu.");
     }
 
 
     private void OnMenuItemClicked(int npcId, int index)
     {
-        Debug.Log($"🖱️ Click menu[{index}] by npcId:{npcId}");
+        //Debug.Log($"🖱️ Click menu[{index}] by npcId:{npcId}");
+
+        gameObject.SetActive(false); // Ẩn GameObject có MenuManager gắn vào
 
         try
         {
@@ -127,6 +129,7 @@ public class MenuManager : MonoBehaviour
             Debug.LogError("Lỗi khi gửi CMD -119: " + ex.Message);
         }
     }
+
 
 
 

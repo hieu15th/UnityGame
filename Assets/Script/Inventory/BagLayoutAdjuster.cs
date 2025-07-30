@@ -91,14 +91,18 @@ public class BagLayoutAdjuster : MonoBehaviour
     {
         try
         {
+            //Debug.Log($"📦 Nhận dữ liệu túi. Tổng số byte: {data.Length}");
+
             using (MemoryStream ms = new MemoryStream(data))
             using (BinaryReader reader = new BinaryReader(ms))
             {
                 int bagSize = ReadInt32BigEndian(reader);
+                //Debug.Log($"👜 Kích thước túi: {bagSize}");
 
                 SpawnSlots();
 
                 int itemCount = ReadInt32BigEndian(reader);
+                //Debug.Log($"🔢 Tổng số item: {itemCount}");
 
                 Dictionary<int, ItemData> itemMap = new Dictionary<int, ItemData>();
 
@@ -116,17 +120,20 @@ public class BagLayoutAdjuster : MonoBehaviour
                     string itemName = Encoding.UTF8.GetString(reader.ReadBytes(nameLen));
 
                     int optionCount = ReadInt32BigEndian(reader);
+
+                    //Debug.Log($"🧱 Item[{i}] - Index: {index}, ID: {itemId}, Color: {color}, Type: {type}, Img: {img}, Upgrade: {upgrade}, Quantity: {quantity}, Name: {itemName}, OptionCount: {optionCount}");
+
                     List<OptionData> options = new List<OptionData>
+                {
+                    new OptionData
                     {
-                        new OptionData
-                        {
-                            id = -1,
-                            param = upgrade,
-                            color = 0,
-                            type = -1,
-                            name = itemName
-                        }
-                    };
+                        id = -1,
+                        param = upgrade,
+                        color = 0,
+                        type = -1,
+                        name = itemName
+                    }
+                };
 
                     for (int j = 0; j < optionCount; j++)
                     {
@@ -136,6 +143,8 @@ public class BagLayoutAdjuster : MonoBehaviour
                         int optType = ReadInt32BigEndian(reader);
                         int optNameLen = ReadInt32BigEndian(reader);
                         string optName = Encoding.UTF8.GetString(reader.ReadBytes(optNameLen));
+
+                        //Debug.Log($"  └─ Option[{j}] => ID: {optionId}, Param: {param}, Color: {optColor}, Type: {optType}, Name: {optName}");
 
                         options.Add(new OptionData
                         {
@@ -160,8 +169,11 @@ public class BagLayoutAdjuster : MonoBehaviour
                     };
                 }
 
+                //Debug.Log($"✅ Đã phân tích xong {itemMap.Count} item. Cập nhật giao diện...");
+
                 currentItemMap = itemMap;
 
+                // phần fill UI giữ nguyên, không sửa
                 for (int i = 0; i < slotCount; i++)
                 {
                     GameObject slot = slots[i];
@@ -172,25 +184,8 @@ public class BagLayoutAdjuster : MonoBehaviour
                     var icon = iconTransform?.GetComponent<Image>();
                     var quantityText = quantityTransform?.GetComponent<TextMeshProUGUI>();
 
-                    if (slotImage == null)
-                    {
-                        Debug.LogWarning($"\u26a0\ufe0f Slot {i}: Kh\u00f4ng c\u00f3 Image tr\u00ean Slot");
-                        continue;
-                    }
                     var borderEffectTransform = slot.transform.Find("BorderEffect");
                     var dotEffect = borderEffectTransform?.GetComponent<DotBorderEffect>();
-                    if (borderEffectTransform == null)
-                    {
-                        Debug.LogWarning($"⚠️ Slot {i}: Không tìm thấy object BorderEffect");
-                        continue;
-                    }
-
-                    if (dotEffect == null)
-                    {
-                        Debug.LogWarning($"⚠️ Slot {i}: BorderEffect không có component DotBorderEffect");
-                        continue;
-                    }
-
                     if (dotEffect != null)
                     {
                         int dotCount = 0;
@@ -202,10 +197,7 @@ public class BagLayoutAdjuster : MonoBehaviour
 
                             if (upgrade > 0)
                             {
-                                // dotCount tuần hoàn từ 1–4
                                 dotCount = (upgrade - 1) % 4 + 1;
-
-                                // group tăng mỗi 4 cấp (0:1–4, 1:5–8, ...)
                                 int group = (upgrade - 1) / 4;
 
                                 dotColor = group switch
@@ -222,14 +214,11 @@ public class BagLayoutAdjuster : MonoBehaviour
 
                         dotEffect.Init(dotColor, dotCount);
                     }
-                    else {
-                        Debug.LogWarning($"Bị null");
-
-                    }
-
 
                     if (itemMap.TryGetValue(i, out ItemData item))
                     {
+                        //Debug.Log($"🎯 Slot {i} có item ID={item.itemId}, tên={item.name}, số lượng={item.quantity}");
+
                         switch (item.color)
                         {
                             case 0: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_6"); break;
@@ -256,13 +245,15 @@ public class BagLayoutAdjuster : MonoBehaviour
                 }
 
                 UpdateSelectedSlotVisual();
+                //Debug.Log("✅ Giao diện túi đã cập nhật.");
             }
         }
         catch (Exception ex)
         {
-            Debug.LogError("\u274c L\u1ed7i khi \u0111\u1ecdc d\u1eef li\u1ec7u t\u00fai: " + ex.Message);
+            Debug.LogError($"❌ Lỗi khi đọc dữ liệu túi: {ex.Message}");
         }
     }
+
 
     void SpawnSlots()
     {
@@ -294,7 +285,7 @@ public class BagLayoutAdjuster : MonoBehaviour
 
         if (currentItemMap.TryGetValue(index, out var item))
         {
-            Debug.Log($"\ud83d\udd0d Slot {index} c\u00f3 item ID={item.itemId}, {item.options.Count} option");
+            //Debug.Log($"\ud83d\udd0d Slot {index} c\u00f3 item ID={item.itemId}, {item.options.Count} option");
             optionScrollView.ShowOptions(item.options);
             SetObjectActiveWithText("Sử dụng", btn_left);
             SetObjectActiveWithText("Vứt bỏ", btn_right);

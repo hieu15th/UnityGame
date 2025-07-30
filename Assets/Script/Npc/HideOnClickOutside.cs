@@ -36,7 +36,6 @@ public class HideOnClickOutside : MonoBehaviour
             }
         }
 
-        // Không nhấn vào chính nó hoặc con => return false
         return false;
     }
 }

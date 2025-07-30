@@ -40,7 +40,7 @@ public class NpcClickHandler : MonoBehaviour
 
         if (distance > maxDistance)
         {
-            Debug.Log($"🚫 NPC quá xa (distance = {distance:F2}), không chọn được.");
+            //Debug.Log($"🚫 NPC quá xa (distance = {distance:F2}), không chọn được.");
             return;
         }
 
@@ -68,7 +68,7 @@ public class NpcClickHandler : MonoBehaviour
         if (chooseTransform != null)
         {
             chooseTransform.gameObject.SetActive(true);
-            Debug.Log($"✅ Bật choose của NPC: {npcTransform.name}");
+            //Debug.Log($"✅ Bật choose của NPC: {npcTransform.name}");
         }
     }
 
@@ -147,7 +147,7 @@ public class NpcClickHandler : MonoBehaviour
             writer.Write(IPAddress.HostToNetworkOrder(npcId)); // int 4 bytes
             writer.Flush();
 
-            Debug.Log($"📤 Gửi CMD_SEND_NPC: npcId = {npcId}");
+            //Debug.Log($"📤 Gửi CMD_SEND_NPC: npcId = {npcId}");
         }
         catch (Exception ex)
         {

@@ -42,7 +42,7 @@ public class PartManager : MonoBehaviour
             ApplySinglePart(player, part.partName, part.index);
         }
 
-        Debug.Log("✅ Hoàn tất ApplyParts.");
+        //Debug.Log("✅ Hoàn tất ApplyParts.");
     }
 
 

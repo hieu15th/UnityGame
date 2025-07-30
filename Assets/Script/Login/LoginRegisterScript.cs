@@ -311,7 +311,7 @@ public class LoginRegisterScript : MonoBehaviour
         {
             Debug.LogWarning("ScrollingText chưa được gán. Không thể cập nhật trạng thái.");
         }
-        Debug.Log($"Trạng thái: {message} tại {DateTime.Now}");
+        //Debug.Log($"Trạng thái: {message} tại {DateTime.Now}");
     }
 
     private void Enqueue(Action action)

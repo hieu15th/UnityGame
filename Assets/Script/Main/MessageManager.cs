@@ -15,6 +15,7 @@ public class MessageManager : MonoBehaviour
     private const sbyte CMD_REQUEST_NPC = -115;
     private const sbyte CMD_SEND_NPC = -114;
     private const sbyte CMD_SEND_UI = -113;
+    private const sbyte CMD_SEND_ATTACK = -111;
     public void SendRequest(sbyte cmd)
     {
         try
@@ -33,6 +34,35 @@ public class MessageManager : MonoBehaviour
         catch (Exception ex)
         {
             Debug.LogError("Lỗi khi gửi CMD " + cmd + ": " + ex.Message);
+        }
+    }
+    public void SendAttack(sbyte cmd, int id)
+    {
+        try
+        {
+            var writer = SocketManager.Instance.Writer;
+            if (writer == null)
+            {
+                Debug.LogWarning("⚠️ Writer chưa được khởi tạo.");
+                return;
+            }
+            writer.Write(cmd); 
+
+            writer.Write((byte)0x00); 
+            writer.Write((byte)0x04); 
+
+            // Gửi index kiểu int (4 byte, BigEndian)
+            byte[] indexBytes = BitConverter.GetBytes(id);
+            if (BitConverter.IsLittleEndian)
+                Array.Reverse(indexBytes); 
+            writer.Write(indexBytes); 
+
+            writer.Flush();
+
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"❌ Lỗi khi gửi message:" + cmd + " lỗi" + ex.Message);
         }
     }
     public void SendMessage(sbyte cmd, sbyte subcmd, int index)

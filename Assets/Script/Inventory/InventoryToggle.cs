@@ -1,7 +1,7 @@
-﻿using TMPro;
+﻿using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Collections;
 
 public class InventoryToggle : MonoBehaviour
 {
@@ -10,8 +10,8 @@ public class InventoryToggle : MonoBehaviour
     public Button closeButton;     // Nút đóng
 
     public GameObject bgr;         // Background Panel
-    public GameObject bag;         // UI túi
-    public GameObject pl;          // UI nhân vật
+    private GameObject UI_1, UI_2;         // UI túi
+    public GameObject Bag,Char,Upgrade;          // UI nhân vật
     public GameObject select;          // UI nhân vật
     public GameObject ScrollView;
     public Button leftButton;      // Nút trái
@@ -19,7 +19,8 @@ public class InventoryToggle : MonoBehaviour
     private bool isOpen = false;
     private bool showingBag = true;
     [SerializeField] private MessageManager mess;
-
+    private sbyte index_UI_1, index_UI_2;
+    public sbyte message_UI_1, message_UI_2, message_UI_3;
     void Start()
     {
         if (mess == null)
@@ -32,21 +33,57 @@ public class InventoryToggle : MonoBehaviour
                 return;
             }
         }
-
+        //if (Upgrade == null)
+        //{
+        //    Debug.LogError("Upgrade vẫn chưa được gán trong " + gameObject.name);
+        //    Upgrade = GameObject.Find("UI_Upgrade");
+        //    if (Upgrade != null)
+        //    {
+        //        Debug.Log("Gán thành công Upgrade bằng Find");
+        //    }
+        //}
         closeButton.onClick.AddListener(CloseInventory);
         leftButton.onClick.AddListener(SwitchTab);
         rightButton.onClick.AddListener(SwitchTab);
 
-        UpdateTab();
+        //UpdateTab();
     }
 
-
+    void Default()
+    {
+        if(UI_1 == null)
+        {
+            UI_1 = Bag;
+            UI_2 = Char;
+            index_UI_1 = message_UI_1;
+            index_UI_2 = message_UI_2;
+        }
+    }
+    void Load(int index)
+    {
+        switch (index)
+        {
+            case 0:
+                UI_1 = Bag;
+                UI_2 = Char;
+                index_UI_1 = message_UI_1;
+                index_UI_2 = message_UI_2;
+                break;
+            case 1:
+                UI_1 = Upgrade;
+                UI_2 = Bag;
+                index_UI_1 = message_UI_3;
+                index_UI_2 = message_UI_1;
+                break;
+        }
+    }
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.I))
         {
             if (!isOpen)
             {
+                Default();
                 ShowUIOnly();
                 StartCoroutine(DelayAndSendGetBag());
             }
@@ -63,18 +100,22 @@ public class InventoryToggle : MonoBehaviour
 
         inventoryUI.SetActive(true);
         bgr.SetActive(true);
-        bag.SetActive(true);
-        ScrollView.SetActive(true);
-        pl.SetActive(false);
+        UI_1.SetActive(true);
+        if(UI_1 == Bag)
+        {
+            ScrollView.SetActive(true);
+        }
+        UI_2.SetActive(false);
         openButton.gameObject.SetActive(false);
-        select.SetActive(false);
+        select.SetActive(false);        
         UpdateTab();
     }
 
     private IEnumerator DelayAndSendGetBag()
     {
         yield return null; // Đợi 1 frame để đảm bảo UI đã được render
-        mess.SendRequest(-120);
+        mess.SendRequest(index_UI_1);
+
     }
 
     public void CloseInventory()
@@ -85,9 +126,9 @@ public class InventoryToggle : MonoBehaviour
 
         inventoryUI.SetActive(false);
         bgr.SetActive(false);
-        bag.SetActive(false);
+        UI_1.SetActive(false);
         ScrollView.SetActive(false);
-        pl.SetActive(false);
+        UI_2.SetActive(false);
         openButton.gameObject.SetActive(true);
         select.SetActive(true);
     }
@@ -97,10 +138,11 @@ public class InventoryToggle : MonoBehaviour
         showingBag = !showingBag;
         UpdateTab();
     }
-    public void OpenInventoryFromButton()
+    public void OpenInventoryFromButton(int index)
     {
         if (!isOpen)
         {
+            Load(index);
             ShowUIOnly();
             StartCoroutine(DelayAndSendGetBag());
         }
@@ -108,20 +150,23 @@ public class InventoryToggle : MonoBehaviour
 
     private void UpdateTab()
     {
-        bag.SetActive(showingBag);
+        UI_1.SetActive(showingBag);
 
-        pl.SetActive(!showingBag);
-
+        UI_2.SetActive(!showingBag);
+        if(UI_2.activeSelf && UI_2 == Bag)
+        {
+            ScrollView.SetActive(true);
+        }
         // Gửi lệnh tùy tab
         try
         {
             if (showingBag)
             {
-                mess.SendRequest(-120);
+                mess.SendRequest(index_UI_1);
             }
             else
             {
-                mess.SendRequest(-119);
+                mess.SendRequest(index_UI_2);
             }
 
         }

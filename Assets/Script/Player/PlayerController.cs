@@ -21,7 +21,6 @@ public class PlayerController : MonoBehaviour
     private Dictionary<string, Vector3> previousPositions = new Dictionary<string, Vector3>();
     private Dictionary<string, float> lastMoveTimes = new Dictionary<string, float>();
     private Dictionary<string, Vector3> targetPositions = new Dictionary<string, Vector3>();
-    //[SerializeField] private float coordinateMultiplier = 5f;
 
     void Update()
     {
@@ -54,7 +53,7 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        UpdatePlayerSortingOrder();
+        //UpdatePlayerSortingOrder();
     }
 
     public void HandleNpcList(byte[] data)
@@ -65,10 +64,11 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        int npcCount = BitConverter.ToUInt16(data, 0);
-        int offset = 2;
+        int npcCount = BitConverter.ToInt32(data, 0); // ✔️ đúng vì Java ghi 4 byte
+        int offset = 4; // ✔️ tăng offset lên 4
 
-        Debug.Log($"📥 Số lượng NPC nhận được: {npcCount}");
+
+        //Debug.Log($"📥 Số lượng NPC nhận được: {npcCount}");
 
         List<Npc> npcList = new List<Npc>();
 
@@ -144,7 +144,6 @@ public class PlayerController : MonoBehaviour
         int cloak = BitConverter.ToInt32(data, offset); offset += 4;
 
         SocketManager.Instance.Username = username;
-        Debug.LogWarning($"Nhận part");
         SpawnPlayer(username, currentHP, maxHP, x, y, gold, diamond,
                     hair, body, head, facehair, helmet,
                     armor, hand, leg, boot, weapon,cloak);
@@ -203,81 +202,72 @@ public class PlayerController : MonoBehaviour
     {
         if (data.Length < 1) return;
 
-        int nameLen = data[0];
-        if (data.Length < 1 + nameLen + 8)
-        {
-            Debug.LogWarning("❌ Dữ liệu 0x84 không hợp lệ. Bỏ qua.");
-            return;
-        }
+        int index = 0;
+        int nameLen = data[index++];
+        if (nameLen <= 0 || data.Length < index + nameLen + 60) return;
 
-        string name = Encoding.UTF8.GetString(data, 1, nameLen);
-        if (name == SocketManager.Instance.Username)
-            return;
+        string name = Encoding.UTF8.GetString(data, index, nameLen);
+        index += nameLen;
 
-        int offset = nameLen + 1;
-        float x = BitConverter.ToSingle(data, offset);
-        float y = BitConverter.ToSingle(data, offset + 4);
+        //if (name == SocketManager.Instance.Username)
+        //    return;
+
+        float x = BitConverter.ToSingle(data, index); index += 4;
+        float y = BitConverter.ToSingle(data, index); index += 4;
+        int currentHP = BitConverter.ToInt32(data, index); index += 4;
+        int maxHP = BitConverter.ToInt32(data, index); index += 4;
+
+        int head = BitConverter.ToInt32(data, index); index += 4;
+        int body = BitConverter.ToInt32(data, index); index += 4;
+        int facehair = BitConverter.ToInt32(data, index); index += 4;
+        int helmet = BitConverter.ToInt32(data, index); index += 4;
+        int hair = BitConverter.ToInt32(data, index); index += 4;
+        int armor = BitConverter.ToInt32(data, index); index += 4;
+        int hand = BitConverter.ToInt32(data, index); index += 4;
+        int leg = BitConverter.ToInt32(data, index); index += 4;
+        int boot = BitConverter.ToInt32(data, index); index += 4;
+        int weapon = BitConverter.ToInt32(data, index); index += 4;
+        int cloak = BitConverter.ToInt32(data, index); index += 4;
+
         Vector3 newPos = new Vector3(x, y, 0);
 
-
-        if (otherPlayers.TryGetValue(name, out GameObject other))
+        if (!otherPlayers.TryGetValue(name, out GameObject other))
         {
-            if (!previousPositions.ContainsKey(name) || Vector3.Distance(previousPositions[name], newPos) > 0.01f)
+            Debug.Log($"🟡 Người chơi mới xuất hiện: {name}");
+            SpawnOtherPlayer(name, currentHP, maxHP, x, y,
+                hair, body, head, facehair, helmet,
+                armor, hand, leg, boot, weapon, cloak);
+            return;
+        }
+
+        if (!previousPositions.ContainsKey(name) || Vector3.Distance(previousPositions[name], newPos) > 0.01f)
+        {
+            Vector3 prevPos = previousPositions.ContainsKey(name) ? previousPositions[name] : newPos;
+
+            float deltaX = newPos.x - prevPos.x;
+            float deltaY = newPos.y - prevPos.y;
+
+            // Xoay hướng
+            if (Mathf.Abs(deltaX) > 0.01f)
             {
-                if (previousPositions.TryGetValue(name, out Vector3 prevPos))
-                {
-                    float deltaX = newPos.x - prevPos.x;
-                    float deltaY = newPos.y - prevPos.y;
-
-
-                    if (Mathf.Abs(deltaX) > 0.01f)
-                    {
-                        Vector3 scale = other.transform.localScale;
-                        float oldScaleX = scale.x;
-                        scale.x = deltaX > 0 ? -Mathf.Abs(scale.x) : Mathf.Abs(scale.x);
-                        other.transform.localScale = scale;
-
-                        var nameTransform = other.transform.Find("Name");
-                        if (nameTransform != null)
-                        {
-                            Vector3 nameScale = nameTransform.localScale;
-                            nameScale.x = Mathf.Abs(nameScale.x) * Mathf.Sign(scale.x);
-                            nameTransform.localScale = new Vector3(nameScale.x, nameScale.y, nameScale.z); // ✅ Giữ nguyên scale.y, z
-                            nameTransform.localRotation = Quaternion.identity;
-                        }
-
-                        var healthTransform = other.GetComponentsInChildren<Transform>(true)
-                            .FirstOrDefault(t => t.CompareTag("Health"));
-
-                        if (healthTransform != null)
-                        {
-                            
-                            Vector3 healthScale = healthTransform.localScale;
-                            healthScale.x = Mathf.Abs(healthScale.x) * (scale.x < 0 ? -1:1);
-                            healthTransform.localScale = healthScale;
-                            Vector3 healthPos = healthTransform.localPosition;
-                            healthPos.x = Mathf.Abs(healthPos.x) * (scale.x > 0 ? -1 : 1);
-                            healthTransform.localPosition = healthPos;
-
-                            healthTransform.localRotation = Quaternion.identity;
-                        }
-
-                    }
-                }
-
-                targetPositions[name] = newPos;
-                previousPositions[name] = newPos;
-
-                // Set walk animation
-                var animator = other.GetComponentInChildren<Animator>();
-                if (animator != null)
-                {
-                    animator.SetBool("1_Move", true);
-                }
-                lastMoveTimes[name] = Time.time;
+                Vector3 scale = other.transform.Find("UnitRoot").localScale;
+                scale.x = deltaX > 0 ? -Mathf.Abs(scale.x) : Mathf.Abs(scale.x);
+                other.transform.Find("UnitRoot").localScale = scale;
             }
+
+            targetPositions[name] = newPos;
+            previousPositions[name] = newPos;
+
+            var animator = other.GetComponentInChildren<Animator>();
+            if (animator != null)
+            {
+                animator.SetBool("1_Move", true);
+            }
+
+            lastMoveTimes[name] = Time.time;
         }
     }
+
 
 
 
@@ -324,7 +314,7 @@ public class PlayerController : MonoBehaviour
                 player.tag = "Player";
                 player.AddComponent<PlayerMovement>();
                 cammera.SetTarget(player.transform);
-                Debug.Log("📍 Spawn bản thân");
+                //Debug.Log("📍 Spawn bản thân");
             }
         }
         else
@@ -379,9 +369,6 @@ public class PlayerController : MonoBehaviour
         PartManager.Instance.ApplyParts(player, hair, body, head, facehair, helmet,
                    armor, hand, leg, boot, weapon, cloak);
     }
-
-
-
 
     public void SpawnOtherPlayer(string name, int hp, int maxHP, float x, float y,
                             int hair, int body, int head, int facehair, int helmet,
@@ -455,33 +442,33 @@ public class PlayerController : MonoBehaviour
     }
 
 
-    private void UpdatePlayerSortingOrder()
-    {
-        if (currentPlayer == null) return;
+    //private void UpdatePlayerSortingOrder()
+    //{
+    //    if (currentPlayer == null) return;
 
-        Vector3 myPos = currentPlayer.transform.position;
-        var myGroup = currentPlayer.GetComponent<UnityEngine.Rendering.SortingGroup>();
+    //    Vector3 myPos = currentPlayer.transform.position;
+    //    var myGroup = currentPlayer.GetComponent<UnityEngine.Rendering.SortingGroup>();
 
-        foreach (var kvp in otherPlayers)
-        {
-            GameObject other = kvp.Value;
-            if (other == null) continue;
+    //    foreach (var kvp in otherPlayers)
+    //    {
+    //        GameObject other = kvp.Value;
+    //        if (other == null) continue;
 
-            Vector3 otherPos = other.transform.position;
-            var otherGroup = other.GetComponent<UnityEngine.Rendering.SortingGroup>();
+    //        Vector3 otherPos = other.transform.position;
+    //        var otherGroup = other.GetComponent<UnityEngine.Rendering.SortingGroup>();
 
-            if (Mathf.Abs(myPos.x - otherPos.x) <= 3f && myPos.y <= otherPos.y)
-            {
-                // Trường hợp đặc biệt: x nhỏ hơn và y nằm trong khoảng ±3
-                if (myGroup != null) myGroup.sortingOrder = 20;
-                if (otherGroup != null) otherGroup.sortingOrder = 10;
-            }
-            else
-            {
-                // Trường hợp mặc định: y thấp hơn → vẽ trên
-                if (myGroup != null) myGroup.sortingOrder = -(int)(myPos.y * 1000);
-                if (otherGroup != null) otherGroup.sortingOrder = -(int)(otherPos.y * 1000);
-            }
-        }
-    }
+    //        if (Mathf.Abs(myPos.x - otherPos.x) <= 3f && myPos.y <= otherPos.y)
+    //        {
+    //            // Trường hợp đặc biệt: x nhỏ hơn và y nằm trong khoảng ±3
+    //            if (myGroup != null) myGroup.sortingOrder = 20;
+    //            if (otherGroup != null) otherGroup.sortingOrder = 10;
+    //        }
+    //        else
+    //        {
+    //            // Trường hợp mặc định: y thấp hơn → vẽ trên
+    //            if (myGroup != null) myGroup.sortingOrder = -(int)(myPos.y * 1000);
+    //            if (otherGroup != null) otherGroup.sortingOrder = -(int)(otherPos.y * 1000);
+    //        }
+    //    }
+    //}
 }

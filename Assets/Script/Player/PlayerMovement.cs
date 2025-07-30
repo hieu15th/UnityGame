@@ -11,8 +11,7 @@ public class PlayerMovement : MonoBehaviour
     private Vector2 movement;
     private Vector2 lastSentPosition;
     private Animator animator;
-    private Transform nameTransform, healthTransform;
-    private Vector3 healthOriginalLocalPos;
+    private Transform player;
     private float attackCooldown = 0f;
     public float attackDelay = 1f;
     [SerializeField] private MessageManager mess;
@@ -31,18 +30,7 @@ public class PlayerMovement : MonoBehaviour
         }
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponentInChildren<Animator>();
-        nameTransform = transform.Find("Name");
-
-        var transforms = GetComponentsInChildren<Transform>(true);
-        healthTransform = transforms.FirstOrDefault(t => t.CompareTag("Health"));
-        if (healthTransform == null)
-        {
-            Debug.LogWarning("[DEBUG] Health not found with tag 'Health' in children.");
-        }
-        else
-        {
-            healthOriginalLocalPos = healthTransform.localPosition;
-        }
+        player = transform.Find("UnitRoot");
     }
 
     void Update()
@@ -50,15 +38,6 @@ public class PlayerMovement : MonoBehaviour
         if (attackCooldown > 0f)
             attackCooldown -= Time.deltaTime;
 
-        if ((Mouse.current.leftButton.wasPressedThisFrame || Input.GetMouseButtonDown(0)) && CanMove() && attackCooldown <= 0f)
-        {
-            if (animator != null)
-                animator.SetTrigger("2_Attack");
-
-            //Debug.Log("🗡️ Attack triggered!");
-            attackCooldown = attackDelay;
-        }
-        // ❌ Nếu có UI_Bag bật thì không cho di chuyển
         if (!CanMove())
         {
             movement = Vector2.zero;
@@ -87,31 +66,10 @@ public class PlayerMovement : MonoBehaviour
 
         if (movement.x != 0)
         {
-            Vector3 scale = transform.localScale;
+            Vector3 scale = player.localScale;
             scale.x = Mathf.Abs(scale.x) * Mathf.Sign(-movement.x);
-            transform.localScale = scale;
+            player.localScale = scale;
         }
-
-        if (nameTransform != null)
-        {
-            Vector3 scale = nameTransform.localScale;
-            scale.x = Mathf.Abs(scale.x) * Mathf.Sign(transform.localScale.x);
-            nameTransform.localScale = scale;
-            nameTransform.localRotation = Quaternion.identity;
-        }
-
-        if (healthTransform != null)
-        {
-            // Scale luôn dương
-            Vector3 scale = healthTransform.localScale;
-            scale.x = Mathf.Abs(scale.x) * Mathf.Sign(transform.localScale.x);
-            healthTransform.localScale = scale;
-            healthTransform.localRotation = Quaternion.identity;
-            Vector3 pos = healthOriginalLocalPos;
-            pos.x = pos.x * Mathf.Sign(transform.localScale.x);
-            healthTransform.localPosition = pos;
-        }
-
     }
 
     void FixedUpdate()
@@ -163,10 +121,6 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// ✅ Kiểm tra nếu có UI nào có tag "ui_bag" đang bật thì được phép di chuyển.
-    /// Nếu không có UI nào bật → chặn di chuyển.
-    /// </summary>
     private bool CanMove()
     {
         bool isBagOpen = false;

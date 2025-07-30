@@ -115,7 +115,7 @@ public class NpcManager : MonoBehaviour
             {
                 GameObject.Destroy(npc);
                 npcMap.Remove(id);
-                Debug.Log($"🗑️ Đã xoá NPC ID {id} vì không còn trong danh sách server gửi về.");
+                //Debug.Log($"🗑️ Đã xoá NPC ID {id} vì không còn trong danh sách server gửi về.");
             }
         }
     }

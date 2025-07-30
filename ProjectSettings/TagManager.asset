@@ -9,6 +9,8 @@ TagManager:
   - Npc
   - UI_Bag
   - Menu
+  - ZoneAttack
+  - Enemy
   layers:
   - Default
   - TransparentFX
@@ -17,7 +19,7 @@ TagManager:
   - Water
   - UI
   - Player
-  - 
+  - Enemy
   - 
   - 
   - 

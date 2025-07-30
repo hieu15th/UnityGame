@@ -25,6 +25,7 @@ public class Main : MonoBehaviour
     private const sbyte CMD_REQUEST_NPC = -115;
     private const sbyte CMD_SEND_NPC = -114;
     private const sbyte CMD_SEND_UI = -113;
+    private const sbyte CMD_SEND_MOBS = -112;
 
     private readonly ConcurrentQueue<Action> mainThreadActions = new ConcurrentQueue<Action>();
     [SerializeField] private PlayerController playerHandler;
@@ -34,7 +35,8 @@ public class Main : MonoBehaviour
     [SerializeField] private OptionPlayer optionPlayer;
     [SerializeField] private MenuManager menuManager;
     [SerializeField] private MessageManager mess;
-
+    [SerializeField] private UIManager UI_manager;
+    [SerializeField] private MobsManager MobsManager;
 
     void Start()
     {
@@ -52,7 +54,6 @@ public class Main : MonoBehaviour
         mess.SendRequest(-115);
         StartListening();
     }
-
 
     private void StartListening()
     {
@@ -96,7 +97,7 @@ public class Main : MonoBehaviour
                 sbyte cmd = (sbyte)reader.ReadByte();
                 ushort size = (ushort)((reader.ReadByte() << 8) | reader.ReadByte());
                 byte[] data = reader.ReadBytes(size);
-
+                Debug.Log($"Nhận message: {cmd}");
                 switch (cmd)
                 {
                     case CMD_REQUEST_PLAYER:
@@ -194,6 +195,12 @@ public class Main : MonoBehaviour
                         break;
                     case CMD_REQUEST_NPC:
                         EnqueueMainThread(() => playerHandler.HandleNpcList(data));
+                        break;
+                    case CMD_SEND_UI:
+                        EnqueueMainThread(() => UI_manager.HandleUI(data));
+                        break;
+                    case CMD_SEND_MOBS:
+                        EnqueueMainThread(() => MobsManager.handleSpawmMobs(data));
                         break;
                     default:
                         Debug.Log("📩 Nhận command khác: " + cmd);

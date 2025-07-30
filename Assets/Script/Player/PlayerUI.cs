@@ -1,4 +1,5 @@
-﻿using TMPro;
+﻿using System.Globalization;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI; // Để dùng LayoutRebuilder
 
@@ -37,17 +38,22 @@ public class PlayerUI : MonoBehaviour
             hp.ForceMeshUpdate();
         }
 
+
+        var culture = CultureInfo.InvariantCulture.Clone() as CultureInfo;
+        culture.NumberFormat.NumberGroupSeparator = ",";
+
         if (gold != null)
         {
-            gold.SetText($"{pl.gold}");
+            gold.SetText(pl.gold.ToString("N0", culture));
             gold.ForceMeshUpdate();
         }
 
         if (diamond != null)
         {
-            diamond.SetText($"{pl.diamond}");
+            diamond.SetText(pl.diamond.ToString("N0", culture));
             diamond.ForceMeshUpdate();
         }
+
 
     }
 

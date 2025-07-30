@@ -37,7 +37,7 @@ public class InventoryOpenButton : MonoBehaviour
         {
             btn.onClick.AddListener(() =>
             {
-                inventoryToggle.OpenInventoryFromButton();
+                inventoryToggle.OpenInventoryFromButton(0);
             });
         }
     }
