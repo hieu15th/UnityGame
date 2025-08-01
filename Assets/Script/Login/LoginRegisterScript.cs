@@ -45,12 +45,34 @@ public class LoginRegisterScript : MonoBehaviour
         {
             loading.SetActive(false);
         }
+
+        // Giới hạn ký tự chỉ cho phép chữ cái và số (tiếng Anh)
+        usernameInput.onValueChanged.AddListener(FilterInput);
+        passwordInput.onValueChanged.AddListener(FilterInput);
     }
+
+    private void FilterInput(string value)
+    {
+        TMP_InputField currentInput = EventSystem.current.currentSelectedGameObject?.GetComponent<TMP_InputField>();
+        if (currentInput == null) return;
+
+        // Cho phép: a-z, A-Z, 0-9
+        string filtered = System.Text.RegularExpressions.Regex.Replace(value, "[^a-zA-Z0-9]", "");
+        if (filtered != value)
+        {
+            currentInput.text = filtered;
+            currentInput.caretPosition = filtered.Length;
+        }
+    }
+
 
     void Start()
     {
         loginButton.onClick.AddListener(OnLoginButtonClicked);
         registerButton.onClick.AddListener(OnRegisterButtonClicked);
+        passwordInput.contentType = TMP_InputField.ContentType.Password;
+        passwordInput.asteriskChar = '*'; 
+        passwordInput.ForceLabelUpdate();
 
         string savedUsername = PlayerPrefs.GetString("SavedUsername", "");
         string savedPassword = PlayerPrefs.GetString("SavedPassword", "");

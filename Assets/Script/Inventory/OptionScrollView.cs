@@ -51,6 +51,10 @@ public class OptionScrollView : MonoBehaviour
                     {
                         tmpText.color = Color.white;
                     }
+                    if(options.Count > 2)
+                    {
+                        i++;
+                    }
                 }
                 else
                 {

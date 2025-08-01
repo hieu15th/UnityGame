@@ -23,6 +23,22 @@ public class MobMover : MonoBehaviour
 
     private void Update()
     {
+        MobData mob = GetComponent<MobData>();
+        if (mob != null)
+        {
+            if (mob.current_hp != mob.hp)
+            {
+                GameObject e = transform.Find("Heath_Bar")?.gameObject;
+                if (e != null)
+                {
+                    if (!e.activeSelf)
+                    {
+                        e.SetActive(true);
+                    }
+                }
+            }
+        }
+
         if (!isMoving) return;
 
         moveTimer += Time.deltaTime;

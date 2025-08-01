@@ -74,21 +74,19 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (movement == Vector2.zero) return;
 
         Vector2 newPosition = rb.position + movement.normalized * moveSpeed * Time.fixedDeltaTime;
         rb.MovePosition(newPosition);
 
-        float distance = Vector2.Distance(newPosition, lastSentPosition);
-        float speed = distance / Time.fixedDeltaTime;
-
-        if (distance > 0.05f && speed > 0.5f)
+        if (movement != Vector2.zero)
         {
             lastSentPosition = newPosition;
             SendPositionToServer(newPosition.x, newPosition.y);
         }
+
     }
-    
+
+
     private void SendPositionToServer(float x, float y)
     {
         try

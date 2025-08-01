@@ -132,7 +132,16 @@ public class BagLayoutAdjuster : MonoBehaviour
                         color = 0,
                         type = -1,
                         name = itemName
+                    },
+                    new OptionData
+                    {
+                        id = -2,
+                        param = quantity,
+                        color = 0,
+                        type = -1,
+                        name = "Số lượng:"
                     }
+
                 };
 
                     for (int j = 0; j < optionCount; j++)

@@ -34,7 +34,7 @@ public class OptionPlayer : MonoBehaviour
                 int value = ReadInt32BigEndian(reader);
                 string label = (index < StatLabels.Length) ? StatLabels[index] : $"Chỉ số {index + 1}";
                 string display = $"{label}: {value}";
-                Debug.Log($"✅ {display}");
+                //Debug.Log($"✅ {display}");
                 AddLine(display);
                 index++;
             }

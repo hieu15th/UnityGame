@@ -52,8 +52,6 @@ public class PlayerController : MonoBehaviour
                 }
             }
         }
-
-        //UpdatePlayerSortingOrder();
     }
 
     public void HandleNpcList(byte[] data)
@@ -396,7 +394,9 @@ public class PlayerController : MonoBehaviour
             // 👉 Gọi lại ApplyParts nếu player đã tồn tại
             PartManager.Instance.ApplyParts(existing, hair, body, head, facehair, helmet,
                        armor, hand, leg, boot, weapon, cloak);
-
+            Player stats = existing.GetComponent<Player>() ?? existing.AddComponent<Player>();
+            stats.hp_max = maxHP;
+            stats.hp_now = hp;
             return;
         }
 
@@ -425,6 +425,9 @@ public class PlayerController : MonoBehaviour
             controller.lerpSpeed = healthLerpSpeed;
             controller.SetHP((float)hp / maxHP);
         }
+        Player stats1 = player.GetComponent<Player>() ?? player.AddComponent<Player>();
+        stats1.hp_max = maxHP;
+        stats1.hp_now = hp;
 
         Animator otherAnimator2 = player.GetComponentInChildren<Animator>();
         if (otherAnimator2 != null)

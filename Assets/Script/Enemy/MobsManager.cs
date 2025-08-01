@@ -117,6 +117,28 @@ public class MobsManager : MonoBehaviour
                     }
                 }
                 break;
+            case 2:
+                if (offset + 4 > data.Length)
+                {
+                    Debug.LogError("❌ Không đủ dữ liệu để đọc ID và HP của mob.");
+                    return;
+                }
+
+                int id_attack = BitConverter.ToInt32(data, offset);
+                offset += 4;
+
+                // Cập nhật thông tin mob nếu có
+                if (mobInstances.ContainsKey(id_attack))
+                {
+                    GameObject existing = mobInstances[id_attack];
+                    var mover = existing.GetComponent<MobMover>();
+                    MobData mobData = existing.GetComponent<MobData>();
+                    if (mobData != null)
+                    {
+                        mobData.attack = true;
+                    }
+                }
+                break;
         }
     }
 

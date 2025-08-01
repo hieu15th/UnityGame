@@ -9,6 +9,7 @@ public class MobData : MonoBehaviour
     public int dame;
     public int part;
     public int hp_del;
+    public bool attack=false;
     public void ApplyFrom(Mobs mob)
     {
         id = mob.id;

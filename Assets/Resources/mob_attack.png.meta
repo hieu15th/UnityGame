@@ -1,10 +1,82 @@
 fileFormatVersion: 2
-guid: 5b01f8779e318044f99aee6f5d779bb5
+guid: 789ebbc81d3c9d3429dee8db0982d538
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -2213110166544955125
-    second: message_box_0
+      213: -634080548410268113
+    second: mob_attack_0
+  - first:
+      213: -4795631186807426952
+    second: mob_attack_1
+  - first:
+      213: 5435953862671699071
+    second: mob_attack_2
+  - first:
+      213: 7904486832668521057
+    second: mob_attack_3
+  - first:
+      213: -6359860898386899921
+    second: mob_attack_4
+  - first:
+      213: -1268290438745248405
+    second: mob_attack_5
+  - first:
+      213: 479460853821619130
+    second: mob_attack_6
+  - first:
+      213: 644705198779096629
+    second: mob_attack_7
+  - first:
+      213: 2933592590240245310
+    second: mob_attack_8
+  - first:
+      213: -7682012163518207114
+    second: mob_attack_9
+  - first:
+      213: 8614622441871450511
+    second: mob_attack_10
+  - first:
+      213: -4582388269595047303
+    second: mob_attack_11
+  - first:
+      213: -4544527735312867398
+    second: mob_attack_12
+  - first:
+      213: 980016354453669219
+    second: mob_attack_13
+  - first:
+      213: -5729531833893211234
+    second: mob_attack_14
+  - first:
+      213: 647803859503508204
+    second: mob_attack_15
+  - first:
+      213: -8740454463799697935
+    second: mob_attack_16
+  - first:
+      213: -7700431019024706947
+    second: mob_attack_17
+  - first:
+      213: -2550603688572283298
+    second: mob_attack_18
+  - first:
+      213: -4126813639875041488
+    second: mob_attack_19
+  - first:
+      213: 6631619076976457227
+    second: mob_attack_20
+  - first:
+      213: 6929654077426447545
+    second: mob_attack_21
+  - first:
+      213: 2374605828432588568
+    second: mob_attack_22
+  - first:
+      213: 2872354591918125322
+    second: mob_attack_23
+  - first:
+      213: -1138203543014607545
+    second: mob_attack_24
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -52,7 +124,7 @@ TextureImporter:
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 100
-  spriteBorder: {x: 16, y: 19, z: 23, w: 17}
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: 1
@@ -152,23 +224,89 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: message_box_0
+      name: mob_attack_0
       rect:
         serializedVersion: 2
-        x: 434
-        y: 3282
-        width: 5747
-        height: 1015
+        x: 0
+        y: 0
+        width: 150
+        height: 408
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: b09484277047941e0800000000000000
-      internalID: -2213110166544955125
+      spriteID: d249762791b451346a42d2a6f2e65855
+      internalID: 794527121
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: mob_attack_1
+      rect:
+        serializedVersion: 2
+        x: 150
+        y: 0
+        width: 150
+        height: 408
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 3f6fc56fd3f07124f95a81757c50d6bf
+      internalID: 236512798
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: mob_attack_2
+      rect:
+        serializedVersion: 2
+        x: 300
+        y: 0
+        width: 150
+        height: 408
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f224f389404435b48939cbae1a70d6d6
+      internalID: 1211846758
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: mob_attack_3
+      rect:
+        serializedVersion: 2
+        x: 450
+        y: 0
+        width: 150
+        height: 408
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: bddfc7c273d1c02469d42a767f676e29
+      internalID: -255263631
       vertices: []
       indices: 
       edges: []
@@ -177,17 +315,24 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
-    internalID: 1537655665
+    spriteID: 6f0e204b16054dc4e8fd092924a39d1c
+    internalID: 0
     vertices: []
     indices: 
     edges: []
     weights: []
     secondaryTextures: []
     spriteCustomMetadata:
-      entries: []
+      entries:
+      - key: SpriteEditor.SliceOnImport
+        value: True
+      - key: SpriteEditor.SliceSettings
+        value: '{"sliceOnImport":true,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":150.0,"y":408.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"slicingType":1,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
-      message_box_0: -2213110166544955125
+      mob_attack_0: 794527121
+      mob_attack_1: 236512798
+      mob_attack_2: 1211846758
+      mob_attack_3: -255263631
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
