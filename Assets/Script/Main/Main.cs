@@ -37,6 +37,7 @@ public class Main : MonoBehaviour
     [SerializeField] private MessageManager mess;
     [SerializeField] private UIManager UI_manager;
     [SerializeField] private MobsManager MobsManager;
+    [SerializeField] private NoteAddItem noteAddItem;
 
     void Start()
     {
@@ -165,7 +166,7 @@ public class Main : MonoBehaviour
                                     }
                                     else
                                     {
-                                        Debug.LogWarning("❌ Không có chuỗi nào trong dữ liệu alert.");
+                                        noteAddItem.handleAlert(data);
                                     }
                                 }
                             }

@@ -137,7 +137,7 @@ public class BagLayoutAdjuster : MonoBehaviour
                     {
                         id = -2,
                         param = quantity,
-                        color = 0,
+                        color = 5,
                         type = -1,
                         name = "Số lượng:"
                     }

@@ -136,6 +136,7 @@ public class OptionScrollView : MonoBehaviour
             case 2: return Color.blue;
             case 3: return Color.magenta;
             case 4: return Color.yellow;
+            case 5: return Color.black;
             default: return Color.white;
         }
     }
