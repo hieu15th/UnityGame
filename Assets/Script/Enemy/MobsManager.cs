@@ -145,6 +145,35 @@ public class MobsManager : MonoBehaviour
 
     public void SpawmMobs()
     {
+        HashSet<int> receivedIds = new HashSet<int>();
+        foreach (var mob in receivedMobs)
+        {
+            receivedIds.Add(mob.id);
+        }
+
+        List<int> toRemove = new List<int>();
+        foreach (var id in mobInstances.Keys)
+        {
+            if (!receivedIds.Contains(id))
+            {
+                GameObject mobObj = mobInstances[id];
+                var mobData = mobObj.GetComponent<MobData>();
+                if (mobData != null && mobData.current_hp != 0) 
+                {
+                    toRemove.Add(id);
+                }
+            }
+        }
+
+        // Xóa mob cũ khỏi scene và dictionary
+        foreach (int id in toRemove)
+        {
+            GameObject oldMob = mobInstances[id];
+            Destroy(oldMob);
+            mobInstances.Remove(id);
+        }
+
+
         foreach (var mob in receivedMobs)
         {
             Vector3 newPos = new Vector3(mob.x, mob.y, 0);
@@ -166,7 +195,6 @@ public class MobsManager : MonoBehaviour
                     mobData.hp = mob.hp;
                     mobData.dame = mob.dame;
                     mobData.part = mob.part;
-                    mobData.current_hp = mob.current_hp;
                     if (mobData.current_hp == 0)
                     {
                         mobInstances.Remove(mob.id);
@@ -175,9 +203,10 @@ public class MobsManager : MonoBehaviour
             }
             else
             {
-                if (mob.current_hp != 0) { 
+                if (mob.current_hp != 0)
+                {
                     int index = mob.part;
-
+                    Debug.Log($"part:{mob.part}");
                     if (index >= 1 && index <= mobPrefabs.Count && mobPrefabs[index - 1] != null)
                     {
                         GameObject prefab = mobPrefabs[index - 1];
@@ -185,17 +214,15 @@ public class MobsManager : MonoBehaviour
                         MobData mobData = newMob.GetComponent<MobData>();
                         if (mobData == null)
                         {
-                            newMob.AddComponent<MobData>();
+                            mobData = newMob.AddComponent<MobData>();
                         }
-                        if (mobData != null)
-                        {
-                            mobData.id = mob.id;
-                            mobData.name = mob.name;
-                            mobData.current_hp = mob.current_hp;
-                            mobData.hp = mob.hp;
-                            mobData.dame = mob.dame;
-                            mobData.part = mob.part;
-                        }
+                        mobData.id = mob.id;
+                        mobData.name = mob.name;
+                        mobData.current_hp = mob.current_hp;
+                        mobData.hp = mob.hp;
+                        mobData.dame = mob.dame;
+                        mobData.part = mob.part;
+
                         mobInstances[mob.id] = newMob;
                         var mover = newMob.GetComponent<MobMover>();
                         if (mover != null)
@@ -211,5 +238,6 @@ public class MobsManager : MonoBehaviour
             }
         }
     }
+
 
 }

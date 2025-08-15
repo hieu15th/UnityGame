@@ -725011,9 +725011,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mobPrefabs:
   - {fileID: 2873451921765012011, guid: 86ae77e1049d6a04c9f03556917f31d1, type: 3}
-  - {fileID: 7278668040046406627, guid: bde0a95feedddcd4c9324f64cb8ed06a, type: 3}
-  - {fileID: 365920901775488678, guid: f82e249e932b1e547ae7522181eb398a, type: 3}
-  - {fileID: 7660105455892512601, guid: 5ed8a6ad93a4d9442b0331c90f3dd4d4, type: 3}
+  - {fileID: 2873451921765012011, guid: d60d714582ef9f242a22d2d1b92a41f4, type: 3}
+  - {fileID: 2873451921765012011, guid: 6fc294b4109224844b1acf4c4f7eecbf, type: 3}
+  - {fileID: 2873451921765012011, guid: 5c7cba6dfb1fd61409eaedc6fd8ccfee, type: 3}
 --- !u!114 &2109851613
 MonoBehaviour:
   m_ObjectHideFlags: 0

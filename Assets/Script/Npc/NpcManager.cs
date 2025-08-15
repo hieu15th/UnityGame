@@ -74,7 +74,11 @@ public class NpcManager : MonoBehaviour
                     nameText.text = $"<b><color=#00FF00><size=22>{npc.id}_{npc.name}</size></color></b>";
                 }
             }
-
+            ZoneAttack attack = go.GetComponentInChildren<ZoneAttack>();
+            if (attack != null)
+            {
+                Destroy(attack);
+            }
 
             // Gán thông tin ID
             NpcInfo info = go.AddComponent<NpcInfo>();
