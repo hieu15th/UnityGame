@@ -3,19 +3,17 @@ using UnityEngine.EventSystems;
 
 public class SlotClickHandler : MonoBehaviour, IPointerClickHandler
 {
-    private BagLayoutAdjuster adjuster;
+    private ISlotSelectable layout;
     private int index;
 
-    public void Init(BagLayoutAdjuster adjuster, int index)
+    public void Init(ISlotSelectable layout, int i)
     {
-        this.adjuster = adjuster;
-        this.index = index;
+        this.layout = layout;
+        index = i;
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        adjuster.choose = true;
-        adjuster.SelectSlot(index);
+        layout.SelectSlot(index);
     }
-
 }

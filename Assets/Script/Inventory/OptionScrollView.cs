@@ -9,7 +9,8 @@ public class OptionScrollView : MonoBehaviour
 {
     public RectTransform content;
     public GameObject optionItemPrefab;
-
+    public TMP_SpriteAsset rubySpriteAsset;
+    public TMP_SpriteAsset goldSpriteAsset;
     public void ShowOptions(List<OptionData> options)
     {
         gameObject.SetActive(true);
@@ -37,7 +38,8 @@ public class OptionScrollView : MonoBehaviour
                         if (upgrade > 0)
                             name += $" +{upgrade}";
                     }
-
+                    tmpText.enableWordWrapping = true;
+                    tmpText.overflowMode = TextOverflowModes.Overflow;
                     tmpText.text = name;
                     tmpText.fontSize = 12f;
                     tmpText.fontStyle = FontStyles.Italic;
@@ -58,7 +60,21 @@ public class OptionScrollView : MonoBehaviour
                 }
                 else
                 {
-                    tmpText.text = $"{opt.name} {opt.param}";
+                    tmpText.verticalAlignment = VerticalAlignmentOptions.Middle;
+                    if (options[i].id == 8)
+                    {
+                        tmpText.spriteAsset = rubySpriteAsset;
+                        tmpText.text = $"{opt.name} {opt.param} <sprite=0>";
+                    }
+                    else if (options[i].id == 0)
+                    {
+                        tmpText.spriteAsset = goldSpriteAsset;
+                        tmpText.text = $"{opt.name} {opt.param} <sprite=0>";
+                    }
+                    else
+                    {
+                        tmpText.text = $"{opt.name} {opt.param}";
+                    }
                     tmpText.fontSize = 10f;
                     tmpText.fontStyle = FontStyles.Normal;
                     tmpText.color = GetColorFromOption(opt.color);

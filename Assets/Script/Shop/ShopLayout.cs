@@ -1,0 +1,423 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+using OptionDataNamespace;
+using ItemDataNamespace;
+
+public class ShopLayout : MonoBehaviour, ISlotSelectable
+{
+    public RectTransform bagPanel;
+    public RectTransform content;
+    public GridLayoutGroup gridLayout;
+    public GameObject slotPrefab;
+    public GameObject btn_left;
+    public GameObject btn_right;
+    public GameObject detail;
+    public OptionScrollView optionScrollView;
+    public MouseClickDetector click;
+    private Dictionary<int, ItemData> currentItemMap = new Dictionary<int, ItemData>();
+    private int slotCount,type_shop;
+    public int columnCount = 5;
+    public float spacing = 2f;
+
+    [HideInInspector] public bool choose = false;
+    private int selectedSlotIndex = -1;
+    private List<GameObject> slots = new List<GameObject>();
+    [SerializeField] public InventoryToggle UI_Shop;
+
+    void Start()
+    {
+        AdjustSlotSize();
+    }
+
+    void Update()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            bool clickOnContent = RectTransformUtility.RectangleContainsScreenPoint(content, Input.mousePosition, Camera.main);
+            bool clickOnLeft = RectTransformUtility.RectangleContainsScreenPoint(btn_left.GetComponent<RectTransform>(), Input.mousePosition, Camera.main);
+            bool clickOnRight = RectTransformUtility.RectangleContainsScreenPoint(btn_right.GetComponent<RectTransform>(), Input.mousePosition, Camera.main);
+            bool clickOnExtra = RectTransformUtility.RectangleContainsScreenPoint(detail.GetComponent<RectTransform>(), Input.mousePosition, Camera.main);
+
+            if (clickOnLeft && selectedSlotIndex >= 0)
+            {
+                click.SendCommandBuy(selectedSlotIndex, type_shop);
+                return;
+            }
+            if (clickOnRight && selectedSlotIndex >= 0)
+            {
+                click.SendCommandBuy( selectedSlotIndex, type_shop);
+                return;
+            }
+
+            if (!clickOnContent && !clickOnLeft && !clickOnRight && !clickOnExtra)
+            {
+                choose = false;
+                optionScrollView.Hide();
+                SetObjectActiveWithText("", btn_left);
+                SetObjectActiveWithText("", btn_right);
+                selectedSlotIndex = -1;
+                UpdateSelectedSlotVisual();
+            }
+        }
+
+        if (choose)
+        {
+            if (Input.GetKeyDown(KeyCode.RightArrow)) MoveSelection(1);
+            else if (Input.GetKeyDown(KeyCode.LeftArrow)) MoveSelection(-1);
+            else if (Input.GetKeyDown(KeyCode.DownArrow)) MoveSelection(columnCount);
+            else if (Input.GetKeyDown(KeyCode.UpArrow)) MoveSelection(-columnCount);
+        }
+    }
+
+
+
+    void AdjustSlotSize()
+    {
+        float totalWidth = bagPanel.rect.width;
+        float totalSpacing = (columnCount - 1) * spacing;
+        float slotWidth = (totalWidth - totalSpacing - 10f) / columnCount;
+
+        gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        gridLayout.constraintCount = columnCount;
+        gridLayout.cellSize = new Vector2(slotWidth, slotWidth);
+        gridLayout.spacing = new Vector2(spacing, spacing);
+        gridLayout.padding = new RectOffset(5, 5, 5, 5);
+    }
+
+
+    public void HandleBagData(byte[] data)
+    {
+        try
+        {
+            using (MemoryStream ms = new MemoryStream(data))
+            using (BinaryReader reader = new BinaryReader(ms))
+            {
+                type_shop = ReadInt32BigEndian(reader);
+                slotCount = ReadInt32BigEndian(reader);
+                //Debug.Log($"👜 Kích thước túi: {bagSize}");
+
+                SpawnSlots(slotCount);
+
+
+                Dictionary<int, ItemData> itemMap = new Dictionary<int, ItemData>();
+
+                for (int i = 0; i < slotCount; i++)
+                {
+                    int index = ReadInt32BigEndian(reader);
+                    int itemId = ReadInt32BigEndian(reader);
+                    int color = ReadInt32BigEndian(reader);
+                    int type = ReadInt32BigEndian(reader);
+                    int img = ReadInt32BigEndian(reader);
+                    int upgrade = ReadInt32BigEndian(reader);
+                    int quantity = ReadInt32BigEndian(reader);
+
+                    int nameLen = ReadInt32BigEndian(reader);
+                    string itemName = Encoding.UTF8.GetString(reader.ReadBytes(nameLen));
+
+                    int optionCount = ReadInt32BigEndian(reader);
+
+                    //Debug.Log($"🧱 Item[{i}] - Index: {index}, ID: {itemId}, Color: {color}, Type: {type}, Img: {img}, Upgrade: {upgrade}, Quantity: {quantity}, Name: {itemName}, OptionCount: {optionCount}");
+
+                    List<OptionData> options = new List<OptionData>
+                {
+                    new OptionData
+                    {
+                        id = -1,
+                        param = upgrade,
+                        color = 0,
+                        type = -1,
+                        name = itemName
+                    },
+
+                    new OptionData
+                    {
+                        id = -2,
+                        param = quantity,
+                        color = 5,
+                        type = -1,
+                        name = "Số lượng:"
+                    }
+
+                };
+
+                    for (int j = 0; j < optionCount; j++)
+                    {
+                        int optionId = ReadInt32BigEndian(reader);
+                        int param = ReadInt32BigEndian(reader);
+                        int optColor = ReadInt32BigEndian(reader);
+                        int optType = ReadInt32BigEndian(reader);
+                        int optNameLen = ReadInt32BigEndian(reader);
+                        string optName = Encoding.UTF8.GetString(reader.ReadBytes(optNameLen));
+
+                        //Debug.Log($"  └─ Option[{j}] => ID: {optionId}, Param: {param}, Color: {optColor}, Type: {optType}, Name: {optName}");
+
+                        options.Add(new OptionData
+                        {
+                            id = optionId,
+                            param = param,
+                            color = optColor,
+                            type = optType,
+                            name = optName
+                        });
+                    }
+
+                    itemMap[index] = new ItemData
+                    {
+                        itemId = itemId,
+                        color = color,
+                        type = type,
+                        img = img,
+                        upgrade = upgrade,
+                        quantity = quantity,
+                        name = itemName,
+                        options = options
+                    };
+                }
+
+                //Debug.Log($"✅ Đã phân tích xong {itemMap.Count} item. Cập nhật giao diện...");
+
+                currentItemMap = itemMap;
+
+                // phần fill UI giữ nguyên, không sửa
+                for (int i = 0; i < slotCount; i++)
+                {
+                    GameObject slot = slots[i];
+                    Image slotImage = slot.GetComponent<Image>();
+                    var iconTransform = slot.transform.Find("Item");
+                    var quantityTransform = slot.transform.Find("Quantity");
+
+                    var icon = iconTransform?.GetComponent<Image>();
+                    var quantityText = quantityTransform?.GetComponent<TextMeshProUGUI>();
+
+                    var borderEffectTransform = slot.transform.Find("BorderEffect");
+                    var dotEffect = borderEffectTransform?.GetComponent<DotBorderEffect>();
+                    if (dotEffect != null)
+                    {
+                        int dotCount = 0;
+                        Color dotColor = Color.black;
+
+                        if (itemMap.TryGetValue(i, out ItemData item1) && item1 != null)
+                        {
+                            int upgrade = item1.upgrade;
+
+                            if (upgrade > 0)
+                            {
+                                dotCount = (upgrade - 1) % 4 + 1;
+                                int group = (upgrade - 1) / 4;
+
+                                dotColor = group switch
+                                {
+                                    0 => Color.green,
+                                    1 => Color.yellow,
+                                    2 => Color.cyan,
+                                    3 => Color.red,
+                                    4 => Color.magenta,
+                                    _ => Color.white
+                                };
+                            }
+                        }
+
+                        dotEffect.Init(dotColor, dotCount);
+                    }
+
+                    if (itemMap.TryGetValue(i, out ItemData item))
+                    {
+                        //Debug.Log($"🎯 Slot {i} có item ID={item.itemId}, tên={item.name}, số lượng={item.quantity}");
+
+                        switch (item.color)
+                        {
+                            //case 0: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_6"); break;
+                            case 1: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_9"); break;
+                            case 2: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_13"); break;
+                            case 3: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_5"); break;
+                            default: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_6"); break;
+                        }
+
+                        if (icon != null) icon.sprite = GetSpriteFromId(item.img);
+                        if (quantityText != null)
+                            quantityText.text = item.quantity > 1 ? item.quantity.ToString() : "";
+                    }
+                    else
+                    {
+                        if (icon != null) icon.sprite = GetSpriteFromSheet("Items", "UI 1_17");
+                        if (quantityText != null) quantityText.text = "";
+                    }
+                }
+
+                UpdateSelectedSlotVisual();
+                //Debug.Log("✅ Giao diện túi đã cập nhật.");
+
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"❌ Lỗi khi đọc dữ liệu túi: {ex.Message}");
+        }
+        UI_Shop.OpenInventoryFromButton(2);
+    }
+
+
+    void SpawnSlots(int slotCount)
+    {
+        foreach (Transform child in gridLayout.transform)
+        {
+            Destroy(child.gameObject);
+        }
+
+        slots.Clear();
+
+        // Spawn slot mới
+        for (int i = 0; i < slotCount; i++)
+        {
+            GameObject slot = Instantiate(slotPrefab, gridLayout.transform);
+            slot.name = $"Slot_{i}";
+            slots.Add(slot);
+
+            SlotClickHandler handler = slot.AddComponent<SlotClickHandler>();
+            handler.Init(this, i);
+        }
+    }
+
+
+    public void SelectSlot(int index)
+    {
+        if (index < 0 || index >= slots.Count)
+            return;
+
+        selectedSlotIndex = index;
+        choose = true;
+
+        UpdateSelectedSlotVisual();
+        ScrollToSlot(index);
+
+        if (currentItemMap.TryGetValue(index, out var item))
+        {
+            //Debug.Log($"\ud83d\udd0d Slot {index} c\u00f3 item ID={item.itemId}, {item.options.Count} option");
+            optionScrollView.ShowOptions(item.options);
+            SetObjectActiveWithText("Mua", btn_left);
+            SetObjectActiveWithText("", btn_right);
+        }
+        else
+        {
+            SetObjectActiveWithText("", btn_left);
+            SetObjectActiveWithText("", btn_right);
+            optionScrollView.Hide();
+        }
+    }
+    public void SetObjectActiveWithText(string name, GameObject obj)
+    {
+        if (obj == null) return;
+
+        if (!string.IsNullOrEmpty(name))
+        {
+            var textTransform = obj.transform.Find("Text");
+            if (textTransform != null)
+            {
+                var tmpText = textTransform.GetComponentInChildren<TextMeshProUGUI>();
+                if (tmpText != null)
+                {
+                    obj.SetActive(true);
+                    tmpText.text = name;
+                }
+                else
+                {
+                    Debug.LogWarning("Không tìm thấy TextMeshProUGUI trong Text GameObject.");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("Không tìm thấy GameObject con tên là 'Text'.");
+            }
+        }
+        else
+        {
+            obj.SetActive(false);
+        }
+    }
+    void UpdateSelectedSlotVisual()
+    {
+        for (int i = 0; i < slots.Count; i++)
+        {
+            Transform background = slots[i].transform.Find("Background");
+
+            if (background != null)
+            {
+                Image img = background.GetComponent<Image>();
+                if (img != null)
+                {
+                    img.sprite = (i == selectedSlotIndex && choose)
+                        ? GetSpriteFromSheet("Items", "UI 1_1")
+                        : GetSpriteFromSheet("Items", "UI 1_0");
+                }
+            }
+        }
+    }
+
+    void MoveSelection(int offset)
+    {
+        int newIndex = selectedSlotIndex + offset;
+        if (newIndex >= 0 && newIndex < slots.Count)
+            SelectSlot(newIndex);
+    }
+
+    void ScrollToSlot(int index)
+    {
+        if (index < 0 || index >= slots.Count) return;
+
+        RectTransform slotRect = slots[index].GetComponent<RectTransform>();
+        float viewportHeight = bagPanel.rect.height;
+        float contentHeight = content.rect.height;
+        float slotHeight = slotRect.rect.height;
+
+        float slotLocalY = -slotRect.localPosition.y;
+        float slotTop = slotLocalY;
+        float slotBottom = slotLocalY + slotHeight;
+
+        float currentScroll = content.anchoredPosition.y;
+        float newScroll = currentScroll;
+
+        if (slotBottom > currentScroll + viewportHeight)
+            newScroll = slotBottom - viewportHeight;
+        else if (slotTop < currentScroll)
+            newScroll = slotTop;
+
+        float maxScroll = Mathf.Max(0, contentHeight - viewportHeight);
+        newScroll = Mathf.Clamp(newScroll, 0, maxScroll);
+
+        content.anchoredPosition = new Vector2(content.anchoredPosition.x, newScroll);
+    }
+
+    private Sprite GetSpriteFromId(int id)
+    {
+        var sprite = Resources.Load<Sprite>($"Items/{id}");
+        if (sprite == null)
+            Debug.LogWarning($"\u26a0\ufe0f Kh\u00f4ng t\u00ecm th\u1ea5y \u1ea3nh Items/{id}");
+        return sprite;
+    }
+
+    private Sprite GetSpriteFromSheet(string sheetPath, string spriteName)
+    {
+        Sprite[] sprites = Resources.LoadAll<Sprite>(sheetPath);
+        foreach (var sprite in sprites)
+        {
+            if (sprite.name == spriteName)
+                return sprite;
+        }
+
+        Debug.LogWarning($"\u26a0\ufe0f Kh\u00f4ng t\u00ecm th\u1ea5y sprite '{spriteName}' trong sheet '{sheetPath}'");
+        return null;
+    }
+
+    private int ReadInt32BigEndian(BinaryReader reader)
+    {
+        byte[] bytes = reader.ReadBytes(4);
+        if (BitConverter.IsLittleEndian)
+            Array.Reverse(bytes);
+        return BitConverter.ToInt32(bytes, 0);
+    }
+}

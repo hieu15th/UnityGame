@@ -11,7 +11,7 @@ public class InventoryToggle : MonoBehaviour
 
     public GameObject bgr;         // Background Panel
     private GameObject UI_1, UI_2;         // UI túi
-    public GameObject Bag,Char,Upgrade;          // UI nhân vật
+    public GameObject Bag,Char,Upgrade,Shop;          // UI nhân vật
     public GameObject select;          // UI nhân vật
     public GameObject ScrollView;
     public Button leftButton;      // Nút trái
@@ -19,8 +19,8 @@ public class InventoryToggle : MonoBehaviour
     private bool isOpen = false;
     private bool showingBag = true;
     [SerializeField] private MessageManager mess;
-    private sbyte index_UI_1, index_UI_2;
-    public sbyte message_UI_1, message_UI_2, message_UI_3;
+    [SerializeField] private BagLayoutAdjuster bag;
+
     void Start()
     {
         if (mess == null)
@@ -51,13 +51,7 @@ public class InventoryToggle : MonoBehaviour
 
     void Default()
     {
-        if(UI_1 == null)
-        {
-            UI_1 = Bag;
-            UI_2 = Char;
-            index_UI_1 = message_UI_1;
-            index_UI_2 = message_UI_2;
-        }
+        Load(0);
     }
     void Load(int index)
     {
@@ -66,16 +60,17 @@ public class InventoryToggle : MonoBehaviour
             case 0:
                 UI_1 = Bag;
                 UI_2 = Char;
-                index_UI_1 = message_UI_1;
-                index_UI_2 = message_UI_2;
                 break;
             case 1:
                 UI_1 = Upgrade;
                 UI_2 = Bag;
-                index_UI_1 = message_UI_3;
-                index_UI_2 = message_UI_1;
+                break;
+            case 2:
+                UI_1 = Shop;
+                UI_2 = Bag;
                 break;
         }
+        bag.type = index;
     }
     void Update()
     {
@@ -85,7 +80,6 @@ public class InventoryToggle : MonoBehaviour
             {
                 Default();
                 ShowUIOnly();
-                StartCoroutine(DelayAndSendGetBag());
             }
             else
             {
@@ -109,13 +103,6 @@ public class InventoryToggle : MonoBehaviour
         openButton.gameObject.SetActive(false);
         select.SetActive(false);        
         UpdateTab();
-    }
-
-    private IEnumerator DelayAndSendGetBag()
-    {
-        yield return null; // Đợi 1 frame để đảm bảo UI đã được render
-        mess.SendRequest(index_UI_1);
-
     }
 
     public void CloseInventory()
@@ -144,7 +131,6 @@ public class InventoryToggle : MonoBehaviour
         {
             Load(index);
             ShowUIOnly();
-            StartCoroutine(DelayAndSendGetBag());
         }
     }
 
@@ -156,23 +142,6 @@ public class InventoryToggle : MonoBehaviour
         if(UI_2.activeSelf && UI_2 == Bag)
         {
             ScrollView.SetActive(true);
-        }
-        // Gửi lệnh tùy tab
-        try
-        {
-            if (showingBag)
-            {
-                mess.SendRequest(index_UI_1);
-            }
-            else
-            {
-                mess.SendRequest(index_UI_2);
-            }
-
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError("❌ Lỗi khi gửi CMD trong UpdateTab: " + ex.Message);
         }
     }
 }

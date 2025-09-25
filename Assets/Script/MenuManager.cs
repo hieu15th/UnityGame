@@ -7,39 +7,57 @@ using UnityEngine.UI;
 
 public class MenuManager : MonoBehaviour
 {
+    [Header("UI References")]
     public Transform contentParent;
-    public GameObject buttonPrefab; // Prefab chỉ chứa Text (TextMeshProUGUI)
-    public GameObject menu;
+    public GameObject buttonPrefab;      // Prefab nút (TextMeshProUGUI + Button)
+    public GameObject menu;              // Root Menu (có Image nền)
+    public GameObject closeButtonPrefab; // Prefab nút đóng
+
     private const sbyte CMD_SEND_MENU = -113;
 
     public void HandleMenu(byte[] data)
     {
+        if (data == null || data.Length < 5)
+        {
+            Debug.LogWarning("⚠️ Dữ liệu không hợp lệ để mở Menu.");
+            return;
+        }
+
+        // Bật menu + đưa lên trên cùng
         menu.SetActive(true);
-        //Debug.Log("📥 Bắt đầu xử lý HandleMenu...");
-        //Debug.Log("📦 Tổng byte nhận: " + data.Length);
+        menu.transform.SetAsLastSibling();
 
-        StringBuilder hexDump = new StringBuilder();
-        foreach (byte b in data)
-            //hexDump.AppendFormat("{0:X2} ", b);
-        //Debug.Log("🔍 Hex dump: " + hexDump);
+        // Làm nền trong suốt nhưng chặn click
+        Image bgImg = menu.GetComponent<Image>();
+        if (bgImg != null)
+        {
+            bgImg.color = new Color(0, 0, 0, 0);
+            bgImg.raycastTarget = true;
 
+            // Khi click nền thì tắt menu
+            Button bgBtn = menu.GetComponent<Button>();
+            if (bgBtn == null)
+                bgBtn = menu.gameObject.AddComponent<Button>();
+
+            bgBtn.transition = Selectable.Transition.None;
+            bgBtn.onClick.RemoveAllListeners();
+            bgBtn.onClick.AddListener(() =>
+            {
+                menu.SetActive(false);
+                Debug.Log("📌 Menu đóng khi click nền.");
+            });
+        }
+
+        // Xóa các item cũ
         foreach (Transform child in contentParent)
             Destroy(child.gameObject);
 
         int index = 0;
-        if (data.Length < 5)
-        {
-            Debug.LogWarning("⚠️ Dữ liệu không hợp lệ.");
-            return;
-        }
-
-        // 🟡 Đọc npcId từ 4 byte đầu tiên
+        // Đọc npcId (4 byte big-endian)
         int npcId = (data[index++] << 24) | (data[index++] << 16) | (data[index++] << 8) | data[index++];
-        //Debug.Log("🆔 NPC ID = " + npcId);
-
         int count = data[index++];
-        //Debug.Log("📋 Tổng số menu: " + count);
 
+        // Sinh button từ dữ liệu
         for (int i = 0; i < count; i++)
         {
             if (index >= data.Length) break;
@@ -50,57 +68,52 @@ public class MenuManager : MonoBehaviour
             string itemText = Encoding.UTF8.GetString(data, index, length);
             index += length;
 
-            //Debug.Log($"✅ Menu[{i}] = \"{itemText}\"");
-
             GameObject newButtonObj = Instantiate(buttonPrefab, contentParent);
             newButtonObj.SetActive(true);
 
             TextMeshProUGUI label = newButtonObj.GetComponentInChildren<TextMeshProUGUI>();
-            if (label == null)
+            if (label != null)
             {
-                Debug.LogError("❌ Không tìm thấy TextMeshProUGUI trong prefab.");
-                continue;
+                label.text = itemText;
+                label.enableWordWrapping = true;
+                label.overflowMode = TextOverflowModes.Overflow;
             }
-
-            label.text = itemText;
 
             Button btn = newButtonObj.GetComponent<Button>();
             if (btn != null)
             {
                 int capturedIndex = i;
-                btn.onClick.AddListener(() => OnMenuItemClicked(npcId,capturedIndex));
+                btn.onClick.AddListener(() => OnMenuItemClicked(npcId, capturedIndex));
             }
 
             if (i < count - 1)
-            {
-                GameObject line = new GameObject("Line", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
-                line.transform.SetParent(contentParent, false);
-
-                Image img = line.GetComponent<Image>();
-                img.color = new Color32(204, 0, 0, 255);
-
-                RectTransform rt = line.GetComponent<RectTransform>();
-                rt.anchorMin = new Vector2(0f, 0.5f);
-                rt.anchorMax = new Vector2(1f, 0.5f);
-                rt.offsetMin = new Vector2(0f, -1f);
-                rt.offsetMax = new Vector2(0f, 1f);
-
-                LayoutElement layout = line.GetComponent<LayoutElement>();
-                layout.minHeight = 2;
-                layout.preferredHeight = 2;
-                layout.flexibleWidth = 1;
-            }
+                AddLine(contentParent);
         }
-
-        //Debug.Log("✅ Kết thúc xử lý HandleMenu.");
     }
 
+    private void AddLine(Transform parent)
+    {
+        GameObject line = new GameObject("Line", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+        line.transform.SetParent(parent, false);
+
+        Image img = line.GetComponent<Image>();
+        img.color = new Color32(204, 0, 0, 255);
+
+        RectTransform rt = line.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0f, 0.5f);
+        rt.anchorMax = new Vector2(1f, 0.5f);
+        rt.offsetMin = new Vector2(0f, -1f);
+        rt.offsetMax = new Vector2(0f, 1f);
+
+        LayoutElement layout = line.GetComponent<LayoutElement>();
+        layout.minHeight = 2;
+        layout.preferredHeight = 2;
+        layout.flexibleWidth = 1;
+    }
 
     private void OnMenuItemClicked(int npcId, int index)
     {
-        //Debug.Log($"🖱️ Click menu[{index}] by npcId:{npcId}");
-
-        gameObject.SetActive(false); // Ẩn GameObject có MenuManager gắn vào
+        menu.SetActive(false); // Ẩn menu khi chọn item
 
         try
         {
@@ -113,12 +126,12 @@ public class MenuManager : MonoBehaviour
 
             writer.Write(CMD_SEND_MENU);
 
-            // Gửi độ dài payload (8 byte = 2 int)
+            // payload length = 8 (2 int)
             ushort length = 8;
-            writer.Write((byte)(length >> 8));     // byte cao
-            writer.Write((byte)(length & 0xFF));   // byte thấp
+            writer.Write((byte)(length >> 8));
+            writer.Write((byte)(length & 0xFF));
 
-            // Gửi payload: npcId và index (int, big-endian)
+            // Gửi npcId + index (big-endian)
             writer.Write(IPAddress.HostToNetworkOrder(npcId));
             writer.Write(IPAddress.HostToNetworkOrder(index));
 
@@ -126,11 +139,7 @@ public class MenuManager : MonoBehaviour
         }
         catch (Exception ex)
         {
-            Debug.LogError("Lỗi khi gửi CMD -119: " + ex.Message);
+            Debug.LogError("Lỗi khi gửi CMD -113: " + ex.Message);
         }
     }
-
-
-
-
 }

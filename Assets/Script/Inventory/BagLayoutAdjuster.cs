@@ -8,7 +8,7 @@ using UnityEngine.UI;
 using OptionDataNamespace;
 using ItemDataNamespace;
 
-public class BagLayoutAdjuster : MonoBehaviour
+public class BagLayoutAdjuster : MonoBehaviour, ISlotSelectable
 {
     public RectTransform bagPanel;
     public RectTransform content;
@@ -16,42 +16,116 @@ public class BagLayoutAdjuster : MonoBehaviour
     public GameObject slotPrefab;
     public GameObject btn_left;
     public GameObject btn_right;
+    public GameObject detail;
     public OptionScrollView optionScrollView;
     public MouseClickDetector click;
     private Dictionary<int, ItemData> currentItemMap = new Dictionary<int, ItemData>();
-    private const int slotCount = 120;
+    private int slotCount;
     public int columnCount = 5;
     public float spacing = 2f;
-
+    public int type;
+    public BoxAlertUI boxAlert;
     [HideInInspector] public bool choose = false;
     private int selectedSlotIndex = -1;
     private List<GameObject> slots = new List<GameObject>();
-
+    public UpgradeUI upgradeUI;
     void Start()
     {
         AdjustSlotSize();
-        SpawnSlots();
     }
 
     void Update()
     {
+        if(selectedSlotIndex >=0 && selectedSlotIndex == upgradeUI.index_choose)
+        {
+            SetObjectActiveWithText("", btn_left);
+        }
         if (Input.GetMouseButtonDown(0))
         {
             bool clickOnContent = RectTransformUtility.RectangleContainsScreenPoint(content, Input.mousePosition, Camera.main);
             bool clickOnLeft = RectTransformUtility.RectangleContainsScreenPoint(btn_left.GetComponent<RectTransform>(), Input.mousePosition, Camera.main);
             bool clickOnRight = RectTransformUtility.RectangleContainsScreenPoint(btn_right.GetComponent<RectTransform>(), Input.mousePosition, Camera.main);
+            bool clickOnExtra = RectTransformUtility.RectangleContainsScreenPoint(detail.GetComponent<RectTransform>(), Input.mousePosition, Camera.main);
+
             if (clickOnLeft && selectedSlotIndex >= 0)
             {
-                click.SendCommand("use", selectedSlotIndex);
-                return;
+                switch (type)
+                {
+                    case 0:
+                        click.SendCommand("use", selectedSlotIndex);
+                        break;
+                    case 1:
+                        upgradeUI.index_choose = selectedSlotIndex;
+                        click.SendCommand("add_upgarde", selectedSlotIndex);
+                        break;
+                    case 2:
+                        if (currentItemMap.TryGetValue(selectedSlotIndex, out var selectedItem))
+                        {
+                            string itemName = selectedItem.name;
+                            if (selectedItem.upgrade > 0)
+                            {
+                                itemName += " + " + selectedItem.upgrade;
+                            }
+                            int money = 0;
+                            string currency = "Vàng";
+
+                            if (selectedItem.options != null)
+                            {
+                                foreach (var option in selectedItem.options)
+                                {
+                                    if (option.id == 0)
+                                    {
+                                        money =option.param * selectedItem.quantity;
+                                        currency = "Vàng";
+                                        break;
+                                    }
+                                    if (option.id == 8)
+                                    {
+                                        money = option.param * selectedItem.quantity;
+                                        currency = "Ruby";
+                                        break;
+                                    }
+                                    money = selectedItem.quantity;
+                                    currency = "Vàng";
+                                }
+                            }
+
+                            if (money != 0)
+                            {
+                                boxAlert.YesNo(
+                                    $"Bạn chắc chắn muốn bán <color=red>{itemName}</color> với giá {money.ToString()} {currency} không?",
+                                    selectedSlotIndex,
+                                    1
+                                );
+                            }
+                        }
+                        else
+                        {
+                            Debug.LogWarning("❌ Không tìm thấy item tại slot " + selectedSlotIndex);
+                        }
+                        break;
+
+                }
             }
             if (clickOnRight && selectedSlotIndex >= 0)
             {
-                click.SendCommand("drop", selectedSlotIndex);
-                return;
+                if (currentItemMap.TryGetValue(selectedSlotIndex, out var selectedItem))
+                {
+                    string itemName = selectedItem.name;
+                    if(selectedItem.upgrade > 0)
+                    {
+                        itemName += " + " + selectedItem.upgrade;
+                    }
+                    boxAlert.YesNo("Bạn chắc chắn muốn vứt " + itemName +" không ?", selectedSlotIndex,0);
+                }
+                else
+                {
+                    Debug.LogWarning("❌ Không tìm thấy item tại slot " + selectedSlotIndex);
+                }
+
             }
 
-            if (!clickOnContent && !clickOnLeft && !clickOnRight)
+            if (!clickOnContent && !clickOnLeft && !clickOnRight && !clickOnExtra)
             {
                 choose = false;
                 optionScrollView.Hide();
@@ -91,15 +165,15 @@ public class BagLayoutAdjuster : MonoBehaviour
     {
         try
         {
-            //Debug.Log($"📦 Nhận dữ liệu túi. Tổng số byte: {data.Length}");
-
             using (MemoryStream ms = new MemoryStream(data))
             using (BinaryReader reader = new BinaryReader(ms))
             {
                 int bagSize = ReadInt32BigEndian(reader);
+
+                slotCount = ReadInt32BigEndian(reader);
                 //Debug.Log($"👜 Kích thước túi: {bagSize}");
 
-                SpawnSlots();
+                SpawnSlots(slotCount);
 
                 int itemCount = ReadInt32BigEndian(reader);
                 //Debug.Log($"🔢 Tổng số item: {itemCount}");
@@ -133,6 +207,7 @@ public class BagLayoutAdjuster : MonoBehaviour
                         type = -1,
                         name = itemName
                     },
+
                     new OptionData
                     {
                         id = -2,
@@ -230,11 +305,11 @@ public class BagLayoutAdjuster : MonoBehaviour
 
                         switch (item.color)
                         {
-                            case 0: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_6"); break;
+                            //case 0: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_6"); break;
                             case 1: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_9"); break;
                             case 2: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_13"); break;
                             case 3: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_5"); break;
-                            default: slotImage.sprite = GetSpriteFromSheet("Items", "bgr_item_0"); break;
+                            default: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_6"); break;
                         }
 
                         if (icon != null) icon.sprite = GetSpriteFromId(item.img);
@@ -255,6 +330,7 @@ public class BagLayoutAdjuster : MonoBehaviour
 
                 UpdateSelectedSlotVisual();
                 //Debug.Log("✅ Giao diện túi đã cập nhật.");
+
             }
         }
         catch (Exception ex)
@@ -264,22 +340,28 @@ public class BagLayoutAdjuster : MonoBehaviour
     }
 
 
-    void SpawnSlots()
+    void SpawnSlots(int slotCount)
     {
-        slots.Clear();
-
+        // Xóa hết slot cũ trong scene
         foreach (Transform child in gridLayout.transform)
+        {
             Destroy(child.gameObject);
+        }
+
+        slots.Clear();
 
         for (int i = 0; i < slotCount; i++)
         {
             GameObject slot = Instantiate(slotPrefab, gridLayout.transform);
+            slot.name = $"Slot_{i}";
             slots.Add(slot);
 
             SlotClickHandler handler = slot.AddComponent<SlotClickHandler>();
-            handler.Init(this, i);
+            handler.Init(this, i); // ✅ this giờ là ISlotSelectable
         }
     }
+
+
 
     public void SelectSlot(int index)
     {
@@ -296,8 +378,24 @@ public class BagLayoutAdjuster : MonoBehaviour
         {
             //Debug.Log($"\ud83d\udd0d Slot {index} c\u00f3 item ID={item.itemId}, {item.options.Count} option");
             optionScrollView.ShowOptions(item.options);
-            SetObjectActiveWithText("Sử dụng", btn_left);
-            SetObjectActiveWithText("Vứt bỏ", btn_right);
+            switch (type)
+            {
+                case 0:
+                    SetObjectActiveWithText("Sử dụng", btn_left);
+                    SetObjectActiveWithText("Vứt bỏ", btn_right);
+                    break;
+                case 1:
+                    if(index != upgradeUI.index_choose && item.type !=0 && item.upgrade < 20)
+                    {
+                        SetObjectActiveWithText("Bỏ vào", btn_left);
+                    }
+                    //SetObjectActiveWithText("Vứt bỏ", btn_right);
+                    break;
+                case 2:
+                    SetObjectActiveWithText("Bán", btn_left);
+                    //SetObjectActiveWithText("Vứt bỏ", btn_right);
+                    break;
+            }
         }
         else
         {

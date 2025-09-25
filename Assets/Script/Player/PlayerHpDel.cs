@@ -1,70 +1,65 @@
 ﻿using System.Collections;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class PlayerHpDel : MonoBehaviour
 {
     private Player player;
-    [SerializeField] private GameObject m_gameObject;  // GameObject chứa chữ
-    [SerializeField] private GameObject textPrefab;    // Prefab chứa chữ
-    [SerializeField] private Vector3 textPositionOffset; // Vị trí lệch của chữ so với m_gameObject
-    private GameObject currentText;
+    [SerializeField] private GameObject m_gameObject;      // GameObject chứa chữ
+    [SerializeField] private GameObject textPrefab;        // Prefab chứa chữ
+    [SerializeField] private Vector3 textPositionOffset;   // Vị trí lệch của chữ so với m_gameObject
+    public TMP_SpriteAsset hpSpriteAsset;
     private float moveDuration = 1f; // Thời gian di chuyển lên (1 giây)
     private int hp_old;
+
     void Start()
     {
         player = GetComponent<Player>();
-        if(player != null)
+        if (player != null)
         {
             hp_old = player.hp_now;
         }
     }
-    public void UpdateHpText(string text)
+
+    private void UpdateHpText(GameObject textObj, string text)
     {
-        if (currentText != null)
+        TextMeshPro tmpText = textObj.GetComponent<TextMeshPro>();
+        if (tmpText != null)
         {
-            // Cập nhật nội dung chữ (TextMeshPro)
-            TextMeshPro tmpText = currentText.GetComponent<TextMeshPro>(); // Nếu dùng TextMeshPro
-            if (tmpText != null)
-            {
-                tmpText.text = "-" + text;
-            }
+            tmpText.spriteAsset = hpSpriteAsset;
+            tmpText.fontSize = 12;
+            tmpText.text = "- <size=80%><sprite=0></size>    " + text; // chỉ scale icon
         }
     }
 
-    private IEnumerator MoveTextUp()
+    private IEnumerator MoveTextUp(GameObject textObj)
     {
+        if (textObj == null) yield break;
+
         float elapsedTime = 0f;
-        Vector3 initialPosition = currentText.transform.localPosition;
+        Vector3 initialPosition = textObj.transform.localPosition;
 
-        // Kiểm tra nếu currentText đã bị hủy
-        if (currentText == null) yield break;
-
-        // Đảm bảo text được hiển thị trước khi di chuyển
-        currentText.SetActive(true);
+        textObj.SetActive(true);
 
         while (elapsedTime < moveDuration)
         {
-            // Kiểm tra nếu currentText đã bị hủy trong quá trình di chuyển
-            if (currentText == null)
-            {
-                yield break; // Dừng coroutine nếu currentText đã bị hủy
-            }
+            if (textObj == null) yield break;
 
-            // Tính toán sự dịch chuyển theo thời gian
-            currentText.transform.localPosition = initialPosition + Vector3.up * Mathf.Lerp(0, 1, elapsedTime / moveDuration);
+            textObj.transform.localPosition =
+                initialPosition + Vector3.up * Mathf.Lerp(0, 1, elapsedTime / moveDuration);
 
             elapsedTime += Time.deltaTime;
-            yield return null;  // Đợi frame tiếp theo
+            yield return null;
         }
 
-        // Đảm bảo rằng chữ đã di chuyển đến vị trí cuối cùng
-        if (currentText != null)
+        if (textObj != null)
         {
-            currentText.transform.localPosition = initialPosition + Vector3.up;
+            textObj.transform.localPosition = initialPosition + Vector3.up;
+            Destroy(textObj, 0.2f); // ✅ xoá text sau khi hoàn thành
         }
     }
-    // Update is called once per frame
+
     void Update()
     {
         if (player != null)
@@ -73,27 +68,27 @@ public class PlayerHpDel : MonoBehaviour
             {
                 if (textPrefab != null && m_gameObject != null)
                 {
-                    // Tạo chữ tại vị trí của m_gameObject với độ lệch từ m_gameObject
-                    currentText = Instantiate(textPrefab, m_gameObject.transform.position + textPositionOffset, Quaternion.identity);
+                    GameObject newText = Instantiate(
+                        textPrefab,
+                        m_gameObject.transform.position + textPositionOffset,
+                        Quaternion.identity,
+                        m_gameObject.transform // parent trực tiếp khi spawn
+                    );
 
-                    // Đặt đối tượng chữ là con của m_gameObject để di chuyển cùng
-                    currentText.transform.SetParent(m_gameObject.transform);
+                    newText.transform.localPosition = textPositionOffset;
+                    newText.transform.localScale = textPrefab.transform.localScale;
 
-                    // Đảm bảo rằng chữ luôn ở vị trí chính xác so với m_gameObject
-                    currentText.transform.localPosition = textPositionOffset;
+                    // Update nội dung chữ
+                    UpdateHpText(newText, (hp_old - player.hp_now).ToString());
 
-                    // Giữ nguyên scale của prefab
-                    currentText.transform.localScale = textPrefab.transform.localScale;
-
-                    // Cập nhật nội dung chữ, chuyển hp_del thành string
-                    UpdateHpText((hp_old-player.hp_now).ToString());
-
-                    StartCoroutine(MoveTextUp());
+                    // Coroutine riêng cho text đó
+                    StartCoroutine(MoveTextUp(newText));
                 }
                 hp_old = player.hp_now;
-            } else if (player.hp_now > hp_old)
+            }
+            else if (player.hp_now > hp_old)
             {
-                hp_old=player.hp_now;
+                hp_old = player.hp_now;
             }
         }
     }

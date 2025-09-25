@@ -335,6 +335,7 @@ public class EquipLayoutAdjuster : MonoBehaviour
                     case 1: background.sprite = GetSpriteFromSheet("Items", "UI 1_9"); break;
                     case 2: background.sprite = GetSpriteFromSheet("Items", "UI 1_13"); break;
                     case 3: background.sprite = GetSpriteFromSheet("Items", "UI 1_5"); break;
+                    default: background.sprite = GetSpriteFromSheet("Items", "UI 1_6"); break;
                 }
             }
         }

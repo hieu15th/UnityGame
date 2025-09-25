@@ -26,6 +26,9 @@ public class Main : MonoBehaviour
     private const sbyte CMD_SEND_NPC = -114;
     private const sbyte CMD_SEND_UI = -113;
     private const sbyte CMD_SEND_MOBS = -112;
+    private const sbyte CMD_SEND_QUANTITY_MOB = -110;
+    private const sbyte CMD_SHOP = -109;
+    private const sbyte CMD_INFOR_UPGRADE = -108;
 
     private readonly ConcurrentQueue<Action> mainThreadActions = new ConcurrentQueue<Action>();
     [SerializeField] private PlayerController playerHandler;
@@ -38,6 +41,9 @@ public class Main : MonoBehaviour
     [SerializeField] private UIManager UI_manager;
     [SerializeField] private MobsManager MobsManager;
     [SerializeField] private NoteAddItem noteAddItem;
+    [SerializeField] private PlayerUI playerUI;
+    [SerializeField] private ShopLayout shopUI;
+    [SerializeField] private UpgradeUI upgradeUI;
 
     void Start()
     {
@@ -156,7 +162,7 @@ public class Main : MonoBehaviour
                                 using (BinaryReader reader = new BinaryReader(ms))
                                 {
                                     int count = ReadInt32BigEndian(reader); // Số chuỗi, mặc định là 1
-                                    if (count > 0)
+                                    if (count == 1)
                                     {
                                         int len = ReadInt32BigEndian(reader); // độ dài chuỗi
                                         byte[] msgBytes = reader.ReadBytes(len); // nội dung chuỗi
@@ -202,6 +208,27 @@ public class Main : MonoBehaviour
                         break;
                     case CMD_SEND_MOBS:
                         EnqueueMainThread(() => MobsManager.handleSpawmMobs(data));
+                        break;
+                    case CMD_SEND_QUANTITY_MOB:
+                        EnqueueMainThread(() => playerUI.HandleMobData(data));
+                        break;
+                    case CMD_SHOP:
+                        EnqueueMainThread(() =>
+                        {
+                            if (shopUI != null)
+                                shopUI.HandleBagData(data);
+                            else
+                                Debug.LogWarning("⚠️ shopUI chưa được gán trong Main");
+                        });
+                        break;
+                    case CMD_INFOR_UPGRADE:
+                        EnqueueMainThread(() =>
+                        {
+                            if (upgradeUI != null)
+                                upgradeUI.HandleAddUpgrade(data);
+                            else
+                                Debug.LogWarning("⚠️ upgradeUI chưa được gán trong Main");
+                        });
                         break;
                     default:
                         Debug.Log("📩 Nhận command khác: " + cmd);

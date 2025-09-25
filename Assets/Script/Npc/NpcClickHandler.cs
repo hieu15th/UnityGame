@@ -8,6 +8,7 @@ public class NpcClickHandler : MonoBehaviour
     private Transform player;
     private const float maxDistance = 0.8f;
     private const sbyte CMD_SEND_NPC = -114;
+
     void Start()
     {
         var playerObj = GameObject.FindGameObjectWithTag("Player");
@@ -34,6 +35,16 @@ public class NpcClickHandler : MonoBehaviour
         HandleEnterKey();
         AutoDisableChooseWhenTooFar();
     }
+
+    /// <summary>
+    /// Kiểm tra menu có đang bật không
+    /// </summary>
+    private bool IsMenuOpen()
+    {
+        var menu = GameObject.FindObjectOfType<MenuManager>();
+        return menu != null && menu.gameObject.activeSelf;
+    }
+
     private void HandleNpcHit(Transform npcTransform)
     {
         float distance = Vector2.Distance(npcTransform.position, player.position);
@@ -74,7 +85,12 @@ public class NpcClickHandler : MonoBehaviour
 
     private void HandleMouseClick()
     {
+        // 🚫 Nếu menu đang mở thì không xử lý click NPC
+        if (IsMenuOpen()) return;
+
+        // 🚫 Nếu click trúng UI thì bỏ qua
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
+
         if (!Input.GetMouseButtonDown(0)) return;
 
         Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -90,10 +106,11 @@ public class NpcClickHandler : MonoBehaviour
         }
     }
 
-
-
     private void HandleEnterKey()
     {
+        // 🚫 Nếu menu đang mở thì bỏ qua Enter
+        if (IsMenuOpen()) return;
+
         if (!Input.GetKeyDown(KeyCode.Return)) return;
 
         foreach (var npc in GameObject.FindGameObjectsWithTag("Npc"))

@@ -114,47 +114,50 @@ public class LoginRegisterScript : MonoBehaviour
     {
         if (isLoggingIn) return;
         isLoggingIn = true;
-        if (scrollingText != null)
-        {
-            scrollingText.ClearText();
-        }
-        if (loading != null)
-        {
-            loading.SetActive(true);
-        }
+
+        if (scrollingText != null) scrollingText.SetText("");
+        if (loading != null) loading.SetActive(true);
 
         string username = usernameInput.text?.Trim();
         string password = passwordInput.text?.Trim();
 
+        // helper cho các nhánh return sớm
+        void FailEarly(string msg)
+        {
+            Enqueue(() => UpdateStatus(msg));
+            if (loading != null) loading.SetActive(false);
+            isLoggingIn = false;            // <-- quan trọng
+        }
+
+        // Validate
         if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
         {
-            UpdateStatus("Tên đăng nhập hoặc mật khẩu trống!");
-            if (loading != null) loading.SetActive(false);
+            FailEarly("Tên đăng nhập hoặc mật khẩu trống!");
             return;
         }
         if (username.Length < 3 || password.Length < 6)
         {
-            UpdateStatus("Tên đăng nhập và mật khẩu tối thiếu 6 kí tự");
-            if (loading != null) loading.SetActive(false);
+            FailEarly("Tên đăng nhập tối thiểu 3 ký tự, mật khẩu tối thiểu 6 ký tự.");
             return;
         }
         if (username.Length > 10 || password.Length > 10)
         {
-            UpdateStatus("Tên đăng nhập hoặc mật khẩu tối đa 10 kí tự");
-            if (loading != null) loading.SetActive(false);
+            FailEarly("Tên đăng nhập hoặc mật khẩu tối đa 10 ký tự.");
             return;
         }
 
+        // Qua validate -> bắt đầu kết nối
         connectionThread = new Thread(() => ConnectToServer(username, password));
         connectionThread.IsBackground = true;
         connectionThread.Start();
     }
 
+
     void ConnectToServer(string username, string password)
     {
         try
         {
-            string serverIp = "localhost";
+            string serverIp = "192.168.0.100";
             int serverPort = 14444;
 
             if (SocketManager.Instance == null)
@@ -327,7 +330,7 @@ public class LoginRegisterScript : MonoBehaviour
     {
         if (scrollingText != null)
         {
-            scrollingText.UpdateText(message);
+            scrollingText.SetText(message);
         }
         else
         {

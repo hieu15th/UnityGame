@@ -12,8 +12,9 @@ public class MoveToTarget : MonoBehaviour
     private float speed;
     private bool arrived = false; // Đảm bảo chỉ xử lý 1 lần
 
-    void Start()
+    void OnEnable()
     {
+        arrived = false;
         if (objA != null && objB != null)
         {
             transform.position = objA.position;

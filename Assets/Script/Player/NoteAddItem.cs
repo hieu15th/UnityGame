@@ -1,160 +1,202 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using TMPro;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class NoteAddItem : MonoBehaviour
 {
     [SerializeField] private GameObject alert; // GameObject alert
     [SerializeField] private GameObject alertPrefab; // Prefab sẽ được thêm vào alert
     [SerializeField] private TextMeshProUGUI item; // TextMeshProUGUI để hiển thị tên item
-    private bool isScrolling = false;  // Cờ để theo dõi trạng thái lướt văn bản
+
+    private bool isScrolling = false;
+    private bool isProcessing = false; // đang hiển thị alert 1?
+    private bool isShowingItem = false; // đang hiển thị alert 0?
+    private Queue<byte[]> alertQueue = new Queue<byte[]>(); // hàng chờ cho identifier=1
 
     void Start()
     {
-        alert.SetActive(false);       
+        alert.SetActive(false);
     }
 
     public void handleAlert(byte[] data)
     {
         using (BinaryReader reader = new BinaryReader(new MemoryStream(data)))
         {
-            // Đọc mã loại (identifier) (4 byte)
             int identifier = ReadInt32BigEndian(reader);
 
-            // Đọc độ dài tên item (4 byte)
-            int nameLength = ReadInt32BigEndian(reader);
-
-            // Đọc nội dung chuỗi tên item
-            byte[] msgBytes = reader.ReadBytes(nameLength);
-
-            string itemName = Encoding.UTF8.GetString(msgBytes);  // Chuyển mảng byte thành chuỗi
-
-            // Đọc ID của item (4 byte)
-            int itemId = ReadInt32BigEndian(reader);
-
-            // Kiểm tra xem đã có alertInstance trong alert chưa
-            TextMeshProUGUI alertText = alert.GetComponentInChildren<TextMeshProUGUI>();
-            GameObject alertInstance = null;
-            if (alertText == null)
+            if (identifier == 0)
             {
-                // Instantiate alertPrefab và lấy TextMeshProUGUI
-                alertInstance = Instantiate(alertPrefab, alert.transform);
-                alertText = alertInstance.GetComponent<TextMeshProUGUI>();
-                alertInstance.SetActive(true);  // Hiển thị thông báo
+                HandleItemAlert(reader);
             }
-            else
+            else if (identifier == 2)
             {
-                alertInstance = alertText.gameObject;  // Nếu đã có, lấy gameObject hiện tại
-                alertText.text += ",";
-            }
-
-            // Hiển thị tên item dựa trên itemId
-            switch (itemId)
-            {
-                case -2:
-                    alertText.text += $" {itemName} Vàng";  // Hiển thị tên item với "Vàng"
-                    break;
-                case -1:
-                    alertText.text += $" {itemName} Kim cương";  // Hiển thị tên item với "Kim cương"
-                    break;
-                default:
-                    alertText.text += $" {itemName}";  // Hiển thị tên item bình thường
-                    break;
-            }
-
-            alert.SetActive(true);  // Hiển thị thông báo
-
-            // Kiểm tra xem độ dài văn bản có vượt quá chiều rộng không
-            if (alertText.preferredWidth > alertText.rectTransform.rect.width)
-            {
-                // Nếu văn bản dài hơn chiều rộng, bắt đầu lướt văn bản
-                if (!isScrolling)
+                if (isShowingItem || isProcessing) // nếu đang hiển thị 0 hoặc 1 thì cho vào queue
                 {
-                    isScrolling = true;
-                    StartCoroutine(ScrollText(alertText, 100f));  // Lướt với vận tố
+                    alertQueue.Enqueue(data);
                 }
-            }
-            else
-            {
-                StartCoroutine(HideAlertAfterTime(5f, alertText.gameObject));  // Hủy ngay lập tức
+                else
+                {
+                    HandleMessageAlert(reader);
+                }
             }
         }
     }
 
-    // Coroutine lướt văn bản với vận tốc cố định
-    private IEnumerator ScrollText(TextMeshProUGUI alertText, float speed)
+    private void HandleItemAlert(BinaryReader reader)
+    {
+        int nameLength = ReadInt32BigEndian(reader);
+        byte[] msgBytes = reader.ReadBytes(nameLength);
+        string itemName = Encoding.UTF8.GetString(msgBytes);
+
+        int itemId = ReadInt32BigEndian(reader);
+
+        TextMeshProUGUI alertText = alert.GetComponentInChildren<TextMeshProUGUI>();
+        GameObject alertInstance = null;
+
+        if (alertText == null)
+        {
+            alertInstance = Instantiate(alertPrefab, alert.transform);
+            alertText = alertInstance.GetComponent<TextMeshProUGUI>();
+            alertInstance.SetActive(true);
+        }
+        else
+        {
+            alertInstance = alertText.gameObject;
+            alertText.text += ",";
+        }
+
+        switch (itemId)
+        {
+            case -2: alertText.text += $" {itemName} Vàng"; break;
+            case -1: alertText.text += $" {itemName} Kim cương"; break;
+            default: alertText.text += $" {itemName}"; break;
+        }
+
+        alert.SetActive(true);
+        isShowingItem = true; // đánh dấu đang hiển thị loại 0
+
+        if (alertText.preferredWidth > alertText.rectTransform.rect.width)
+        {
+            if (!isScrolling)
+            {
+                isScrolling = true;
+                StartCoroutine(ScrollText(alertText, 100f, isItem: true));
+            }
+        }
+        else
+        {
+            StartCoroutine(HideAlertAfterTime(5f, alertText.gameObject, isItem: true));
+        }
+    }
+
+    private void HandleMessageAlert(BinaryReader reader)
+    {
+        int nameLength = ReadInt32BigEndian(reader);
+        byte[] msgBytes = reader.ReadBytes(nameLength);
+        string alertMessage = Encoding.UTF8.GetString(msgBytes);
+
+        GameObject alertInstance = Instantiate(alertPrefab, alert.transform);
+        TextMeshProUGUI alertText = alertInstance.GetComponent<TextMeshProUGUI>();
+        alertInstance.SetActive(true);
+        alertText.text = alertMessage;
+
+        alert.SetActive(true);
+        isProcessing = true;
+
+        if (alertText.preferredWidth > alertText.rectTransform.rect.width)
+        {
+            if (!isScrolling)
+            {
+                isScrolling = true;
+                StartCoroutine(ScrollText(alertText, 100f, isItem: false));
+            }
+        }
+        else
+        {
+            StartCoroutine(HideAlertAfterTime(5f, alertText.gameObject, isItem: false));
+        }
+    }
+
+    private IEnumerator ScrollText(TextMeshProUGUI alertText, float speed, bool isItem)
     {
         RectTransform rectTransform = alertText.rectTransform;
         Vector2 startPos = rectTransform.anchoredPosition;
-        float totalWidth = alertText.preferredWidth;  // Chiều rộng của văn bản ban đầu
+        float totalWidth = alertText.preferredWidth;
+        float containerWidth = alertText.rectTransform.rect.width;
 
-        // Lấy chiều rộng của vùng hiển thị (container của TextMeshProUGUI)
-        float containerWidth = 0;
-
-        // Đảm bảo không xuống dòng
         alertText.enableWordWrapping = false;
 
-        // Tính toán vị trí bắt đầu (văn bản sẽ bắt đầu từ ngoài bên phải)
-        float currentPosition = containerWidth;
+        float currentPosition;
 
-        // Lướt văn bản từ phải sang trái
+        if (!isItem)
+        {
+            // ✅ identifier = 0 → bắt đầu hiển thị từ bên trái (trong container)
+            currentPosition = containerWidth;
+        }
+        else
+        {
+            // ✅ identifier = 1 → bắt đầu từ ngoài bên phải
+            currentPosition = 0f;
+        }
+
         while (currentPosition > -totalWidth)
         {
-            // Kiểm tra nếu alertText đã bị destroy (ngừng di chuyển nếu đã bị hủy)
-            if (alertText == null || alertText.gameObject == null)
-            {
-                yield break;  // Nếu alertText đã bị hủy, kết thúc Coroutine
-            }
+            if (alertText == null || alertText.gameObject == null) yield break;
 
-            // Cập nhật văn bản mới nếu có
-            // (Ở đây, bạn có thể thay đổi điều kiện để phù hợp với yêu cầu của bạn)
             if (alertText.text.Length > 0)
-            {
                 totalWidth = alertText.preferredWidth;
-            }
 
+            // luôn chạy từ phải → trái
             currentPosition -= speed * Time.deltaTime;
             rectTransform.anchoredPosition = new Vector2(currentPosition, startPos.y);
 
-            // Chờ một frame
             yield return null;
         }
-        isScrolling = false; 
-        StartCoroutine(HideAlertAfterTime(0f, alertText.gameObject));  // Hủy ngay lập tức
+
+        isScrolling = false;
+        StartCoroutine(HideAlertAfterTime(0f, alertText.gameObject, isItem));
     }
 
 
-
-    // Coroutine hủy thông báo sau một khoảng thời gian
-    private IEnumerator HideAlertAfterTime(float time, GameObject alertInstance)
+    private IEnumerator HideAlertAfterTime(float time, GameObject alertInstance, bool isItem)
     {
-        yield return new WaitForSeconds(time);  // Chờ trong thời gian 'time' giây\
+        yield return new WaitForSeconds(time);
         if (!isScrolling)
         {
             alert.SetActive(false);
             Destroy(alertInstance);
+
+            if (isItem) isShowingItem = false;
+            else isProcessing = false;
+
+            // Sau khi xong thì xử lý queue nếu có
+            if (!isShowingItem && !isProcessing && alertQueue.Count > 0)
+            {
+                byte[] next = alertQueue.Dequeue();
+                using (BinaryReader reader = new BinaryReader(new MemoryStream(next)))
+                {
+                    int identifier = ReadInt32BigEndian(reader);
+                    if (identifier == 1)
+                        HandleMessageAlert(reader);
+                }
+            }
         }
     }
 
-
-    // Hàm đọc Int32 theo định dạng Big Endian
     private int ReadInt32BigEndian(BinaryReader reader)
     {
-        // Kiểm tra xem có đủ dữ liệu để đọc một Int32 (4 byte) không
         if (reader.BaseStream.Length - reader.BaseStream.Position < 4)
         {
             Debug.LogError($"Not enough data to read an Int32. Current Position: {reader.BaseStream.Position}, Stream Length: {reader.BaseStream.Length}");
-            return 0;  // Trả về giá trị mặc định nếu không đủ dữ liệu
+            return 0;
         }
-
-        byte[] bytes = reader.ReadBytes(4);  // Đọc 4 byte từ stream
+        byte[] bytes = reader.ReadBytes(4);
         if (BitConverter.IsLittleEndian)
-            Array.Reverse(bytes);  // Đảo ngược mảng byte nếu hệ thống là Little Endian
-
-        return BitConverter.ToInt32(bytes, 0);  // Chuyển mảng byte thành Int32
+            Array.Reverse(bytes);
+        return BitConverter.ToInt32(bytes, 0);
     }
 }
