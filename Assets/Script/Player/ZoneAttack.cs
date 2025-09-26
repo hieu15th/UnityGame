@@ -1,11 +1,10 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-using static Unity.Burst.Intrinsics.X86.Avx;
 
 public class ZoneAttack : MonoBehaviour
 {
     public string enemyTag = "Enemy";
-    public float attackCooldown = 5f;
+    public float attackInterval = 0.2f; // ⏱️ Tần suất gửi attack request (200ms)
 
     private Animator animator;
     private Transform playerTransform;
@@ -15,7 +14,7 @@ public class ZoneAttack : MonoBehaviour
 
     private void Start()
     {
-        if(message == null)
+        if (message == null)
         {
             message = FindAnyObjectByType<MessageManager>();
         }
@@ -30,44 +29,39 @@ public class ZoneAttack : MonoBehaviour
 
     private void Update()
     {
-
-            if (enemiesInZone.Count > 0 && Time.time - lastAttackTime >= attackCooldown)
+        if (enemiesInZone.Count > 0 && Time.time - lastAttackTime >= attackInterval)
+        {
+            Transform targetEnemy = enemiesInZone[0]; // 🎯 Luôn lấy enemy đầu tiên
+            if (targetEnemy != null)
             {
-                Transform targetEnemy = enemiesInZone[0]; // 🎯 Luôn lấy enemy đầu tiên
-                if (targetEnemy != null)
+                if (!GetEnemyActive(targetEnemy))
                 {
-                    if (!GetEnemyActive(targetEnemy))
-                    {
-                        enemiesInZone.Remove(targetEnemy);
-                        return;
-                    }
-                    float dir = targetEnemy.position.x - playerTransform.position.x;
-                    Vector3 scale = playerTransform.Find("UnitRoot").localScale;
-
-                    // Đảo ngược hướng nhân vật nếu cần thiết
-                    if ((dir > 0 && scale.x > 0) || (dir < 0 && scale.x < 0))
-                    {
-                        scale.x *= -1;
-                        playerTransform.Find("UnitRoot").localScale = scale;
-                    }
-
-                    // Kích hoạt trigger tấn công
-                    animator?.SetTrigger("2_Attack");
-
-                    // Cập nhật thời gian tấn công
-                    lastAttackTime = Time.time;
-                    var animatorEnemy = targetEnemy.GetComponentInChildren<Animator>();
-                    MobData data = targetEnemy.GetComponent<MobData>();
-                    animatorEnemy?.SetTrigger("Hit");
-                    if (transform.parent.CompareTag("Player"))  // Kiểm tra nếu đối tượng là "Player"
-                    {
-                        message.SendAttack(-111, data.id);
-                    }
+                    enemiesInZone.Remove(targetEnemy);
+                    return;
                 }
-            }
-        
-    }
 
+                float dir = targetEnemy.position.x - playerTransform.position.x;
+                Vector3 scale = playerTransform.Find("UnitRoot").localScale;
+
+                // Đảo ngược hướng nhân vật nếu cần thiết
+                if ((dir > 0 && scale.x > 0) || (dir < 0 && scale.x < 0))
+                {
+                    scale.x *= -1;
+                    playerTransform.Find("UnitRoot").localScale = scale;
+                }
+
+                // ⚡ Gửi yêu cầu tấn công (server sẽ quyết định có hợp lệ không)
+                MobData data = targetEnemy.GetComponent<MobData>();
+                if (transform.parent.CompareTag("Player") && data != null)
+                {
+                    message.SendAttack(-111, data.id);
+                }
+
+                // Cập nhật thời gian gửi lần cuối
+                lastAttackTime = Time.time;
+            }
+        }
+    }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
@@ -77,8 +71,23 @@ public class ZoneAttack : MonoBehaviour
             if (!enemiesInZone.Contains(enemyRoot))
             {
                 enemiesInZone.Add(enemyRoot);
-            } 
+            }
         }
+    }
+    // Gọi khi server xác nhận attack hợp lệ
+    public void PlayAttackAnimation(int enemyId)
+    {
+        // Tìm enemy theo ID
+        Transform targetEnemy = enemiesInZone.Find(e =>
+        {
+            MobData mob = e.GetComponent<MobData>();
+            return mob != null && mob.id == enemyId;
+        });
+
+        if (targetEnemy == null) return;
+        // 🎬 Trigger animation "Hit" của enemy
+        var animatorEnemy = targetEnemy.GetComponentInChildren<Animator>();
+        animatorEnemy?.SetTrigger("Hit");
     }
 
     private void OnTriggerExit2D(Collider2D other)
@@ -93,7 +102,6 @@ public class ZoneAttack : MonoBehaviour
         }
     }
 
-    // Kiểm tra tag Enemy trong hierarchy
     private bool IsEnemy(Collider2D other)
     {
         Transform current = other.transform;
@@ -106,6 +114,7 @@ public class ZoneAttack : MonoBehaviour
         }
         return false;
     }
+
     private bool GetEnemyActive(Transform other)
     {
         Transform current = other.transform;
@@ -121,7 +130,6 @@ public class ZoneAttack : MonoBehaviour
         return false;
     }
 
-    // Trả về object có tag Enemy (dù là cha)
     private Transform GetEnemyRoot(Collider2D other)
     {
         Transform current = other.transform;

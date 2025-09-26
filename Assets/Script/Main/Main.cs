@@ -2,16 +2,19 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+
 public class Main : MonoBehaviour
 {
     private Thread listenThread;
     private bool isRunning = false;
+    private bool isBanned = false;
 
     private const sbyte CMD_REQUEST_PLAYER = -125;
     private const sbyte CMD_MOVE = -124;
@@ -26,6 +29,7 @@ public class Main : MonoBehaviour
     private const sbyte CMD_SEND_NPC = -114;
     private const sbyte CMD_SEND_UI = -113;
     private const sbyte CMD_SEND_MOBS = -112;
+    private const sbyte CMD_SEND_ATTACK = -111;
     private const sbyte CMD_SEND_QUANTITY_MOB = -110;
     private const sbyte CMD_SHOP = -109;
     private const sbyte CMD_INFOR_UPGRADE = -108;
@@ -124,15 +128,26 @@ public class Main : MonoBehaviour
                         break;
 
                     case CMD_BAND:
+                        // ✅ đánh dấu ngay trong thread để catch biết
+                        isBanned = true;
+                        isRunning = false;
+
                         EnqueueMainThread(() =>
                         {
-                            SocketManager.Instance.ResetConnection();
-                            isRunning = false;
-                            listenThread?.Interrupt();
-                            listenThread = null;
-                            Destroy(gameObject); // Hủy Main nếu là DontDestroyOnLoad
-                            SceneManager.LoadScene("Login");
+                            if (boxAlertUI != null)
+                            {
+                                // Reset kết nối
+                                SocketManager.Instance.ResetConnection();
+                                listenThread?.Interrupt();
+                                listenThread = null;
 
+                                // Hiện box thông báo
+                                boxAlertUI.Band("Tài khoản được đăng nhập ở nơi khác");
+                            }
+                            else
+                            {
+                                Debug.LogWarning("⚠️ boxAlertUI chưa được gán trong Main");
+                            }
                         });
                         break;
                     case CMD_GETBAG:
@@ -230,6 +245,9 @@ public class Main : MonoBehaviour
                                 Debug.LogWarning("⚠️ upgradeUI chưa được gán trong Main");
                         });
                         break;
+                    case CMD_SEND_ATTACK:
+                        EnqueueMainThread(() => playerHandler.HandleAttack(data));
+                        break;
                     default:
                         Debug.Log("📩 Nhận command khác: " + cmd);
                         break;
@@ -238,18 +256,28 @@ public class Main : MonoBehaviour
         }
         catch (Exception ex)
         {
-            Debug.LogWarning("🔌 Mất kết nối server: " + ex.Message);
-            EnqueueMainThread(() =>
+            if (!isBanned) // ❌ Nếu BAN thì bỏ qua toàn bộ xử lý
             {
-                SocketManager.Instance.ResetConnection();
+                EnqueueMainThread(() =>
+                {
+                    Debug.LogWarning("🔌 Mất kết nối server: " + ex.Message);
+                    SocketManager.Instance.ResetConnection();
+                    isRunning = false;
+                    listenThread?.Interrupt();
+                    listenThread = null;
+                    Destroy(gameObject);
+                    SceneManager.LoadScene("Login");
+                });
+            }
+            else
+            {
+                // ✅ Nếu là BAN thì chỉ ngắt thread nhẹ nhàng, không log gì thêm
                 isRunning = false;
                 listenThread?.Interrupt();
                 listenThread = null;
-                Destroy(gameObject); // Hủy Main nếu là DontDestroyOnLoad
-                SceneManager.LoadScene("Login");
-
-            });
+            }
         }
+
     }
     private int ReadInt32BigEndian(BinaryReader reader)
     {
@@ -258,4 +286,17 @@ public class Main : MonoBehaviour
             Array.Reverse(bytes);
         return BitConverter.ToInt32(bytes, 0);
     }
+
+    public void HandleBandDisconnect()
+    {
+        SocketManager.Instance.ResetConnection();
+        isRunning = false;
+
+        listenThread?.Interrupt();
+        listenThread = null;
+
+        Destroy(gameObject);
+        SceneManager.LoadScene("Login");
+    }
+
 }

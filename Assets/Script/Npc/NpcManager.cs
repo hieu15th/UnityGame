@@ -71,7 +71,7 @@ public class NpcManager : MonoBehaviour
                 TextMeshPro nameText = nameTransform.GetComponent<TextMeshPro>();
                 if (nameText != null)
                 {
-                    nameText.text = $"<b><color=#00FF00><size=22>{npc.id}_{npc.name}</size></color></b>";
+                    nameText.text = $"<b><color=#00FF00><size=22>{npc.name}</size></color></b>";
                 }
             }
             ZoneAttack attack = go.GetComponentInChildren<ZoneAttack>();

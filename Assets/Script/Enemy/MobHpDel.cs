@@ -68,27 +68,37 @@ public class MobHpDel : MonoBehaviour
         {
             if (textPrefab != null && m_gameObject != null)
             {
-                // Tạo chữ tại vị trí của m_gameObject với độ lệch từ m_gameObject
-                currentText = Instantiate(textPrefab, m_gameObject.transform.position + textPositionOffset, Quaternion.identity);
-
-                // Đặt đối tượng chữ là con của m_gameObject để di chuyển cùng
-                currentText.transform.SetParent(m_gameObject.transform);
-
-                // Đảm bảo rằng chữ luôn ở vị trí chính xác so với m_gameObject
-                currentText.transform.localPosition = textPositionOffset;
-
-                // Giữ nguyên scale của prefab
-                currentText.transform.localScale = textPrefab.transform.localScale;
-
-                // Cập nhật nội dung chữ, chuyển hp_del thành string
-                UpdateHpText(mob.hp_del.ToString());
-
-                // Tính toán tốc độ di chuyển (di chuyển lên trong 1 giây)
-                StartCoroutine(MoveTextUp());
+                // Gọi coroutine để delay 0.5s trước khi tạo text
+                StartCoroutine(SpawnHpTextWithDelay(mob.hp_del));
             }
 
             mob.hp_del = 0;  // Reset hp_del sau khi đã sử dụng
         }
     }
+
+    private IEnumerator SpawnHpTextWithDelay(int damage)
+    {
+        // ⏳ Chờ 0.5 giây
+        yield return new WaitForSeconds(0.5f);
+
+        // Tạo chữ tại vị trí của m_gameObject với độ lệch từ m_gameObject
+        currentText = Instantiate(textPrefab, m_gameObject.transform.position + textPositionOffset, Quaternion.identity);
+
+        // Đặt đối tượng chữ là con của m_gameObject để di chuyển cùng
+        currentText.transform.SetParent(m_gameObject.transform);
+
+        // Đảm bảo rằng chữ luôn ở vị trí chính xác so với m_gameObject
+        currentText.transform.localPosition = textPositionOffset;
+
+        // Giữ nguyên scale của prefab
+        currentText.transform.localScale = textPrefab.transform.localScale;
+
+        // Cập nhật nội dung chữ, chuyển damage thành string
+        UpdateHpText(damage.ToString());
+
+        // Tính toán tốc độ di chuyển (di chuyển lên trong 1 giây)
+        StartCoroutine(MoveTextUp());
+    }
+
 
 }

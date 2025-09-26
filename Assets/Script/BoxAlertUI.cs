@@ -1,5 +1,7 @@
-﻿using UnityEngine;
+﻿using System;
 using TMPro;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class BoxAlertUI : MonoBehaviour
 {
@@ -8,9 +10,13 @@ public class BoxAlertUI : MonoBehaviour
     public GameObject closeButton,yes,no;
     public GameObject inventory;
     public GameObject bgr;
+    public GameObject joystick;
     public MouseClickDetector mouseClickDetector;
     private bool shouldRestoreInventory = false;
     private int mess =-1,type=-1;
+    private bool check_joystick=true;
+    private bool freeze=false;
+    public Main main;
     void Update()
     {
         if (Input.GetMouseButtonDown(0))
@@ -32,6 +38,16 @@ public class BoxAlertUI : MonoBehaviour
             if (clickedOnCloseBtn || clickedOnNoBtn || clickedOnYesBtn)
             {
                 Hide();
+                if (freeze)
+                {
+                    if (main != null)
+                        main.HandleBandDisconnect();
+                }
+                if (check_joystick == true)
+                {
+                    joystick.SetActive(true);
+                    check_joystick = false;
+                }
                 if (shouldRestoreInventory && inventory != null)
                 {
                     inventory.SetActive(true);
@@ -51,9 +67,14 @@ public class BoxAlertUI : MonoBehaviour
 
     public void ShowAlert(string message)
     {
+        check_joystick = joystick.activeSelf;
         closeButton.SetActive(true);
         yes.SetActive(false);
         no.SetActive(false);
+        if (joystick.activeSelf)
+        {
+            joystick.SetActive(false);
+        }
         if (inventory != null && inventory.activeSelf)
         {
             inventory.SetActive(false);
@@ -101,5 +122,29 @@ public class BoxAlertUI : MonoBehaviour
     {
         if (alertPanel != null)
             alertPanel.SetActive(false);
+    }
+
+    internal void Band(string message)
+    {   
+        freeze = true;
+        closeButton.SetActive(true);
+        yes.SetActive(false);
+        no.SetActive(false);
+        joystick.SetActive(false);
+        if (inventory != null && inventory.activeSelf)
+        {
+            inventory.SetActive(false);
+            bgr.SetActive(false);
+        }
+        else
+        {
+            shouldRestoreInventory = false;
+        }
+
+        if (alertPanel != null && alertText != null)
+        {
+            alertPanel.SetActive(true);
+            alertText.text = message;
+        }
     }
 }

@@ -1056,6 +1056,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetHP: 1
   lerpSpeed: 5
+  zatt: {fileID: 0}
 --- !u!1 &1698344461424826283
 GameObject:
   m_ObjectHideFlags: 0
@@ -6338,7 +6339,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   enemyTag: Enemy
-  attackCooldown: 1
+  attackInterval: 0.2
 --- !u!70 &1934383680698923380
 CapsuleCollider2D:
   m_ObjectHideFlags: 0

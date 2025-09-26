@@ -6,7 +6,7 @@ public class Die : MonoBehaviour
     private MobData mobData;
     private Animator animator;
     private GameObject hp;
-
+    public HealthBarController healthBarController;
     void Start()
     {
         if (mobData == null)
@@ -32,7 +32,7 @@ public class Die : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (mobData.current_hp == 0)
+        if (healthBarController.die)
         {
             animator.SetBool("Dead", true);
             Destroy(hp);

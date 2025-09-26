@@ -720196,7 +720196,9 @@ MonoBehaviour:
   no: {fileID: 149409781}
   inventory: {fileID: 389259214}
   bgr: {fileID: 1658530610}
+  joystick: {fileID: 612594214}
   mouseClickDetector: {fileID: 1797805893}
+  main: {fileID: 1285441703}
 --- !u!114 &964909034
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -727317,6 +727319,7 @@ MonoBehaviour:
     type: 3}
   cammera: {fileID: 567239952}
   healthLerpSpeed: 5
+  zatt: {fileID: 0}
 --- !u!4 &2109851609
 Transform:
   m_ObjectHideFlags: 0

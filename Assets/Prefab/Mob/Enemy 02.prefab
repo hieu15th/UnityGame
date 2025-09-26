@@ -102,6 +102,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetHP: 1
   lerpSpeed: 5
+  die: 0
 --- !u!1 &1052566976740688900
 GameObject:
   m_ObjectHideFlags: 0
@@ -495,6 +496,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ed2902cf38d264f4d91bf13448abc0a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  healthBarController: {fileID: 188888071487620800}
 --- !u!114 &-2501396672211319235
 MonoBehaviour:
   m_ObjectHideFlags: 0

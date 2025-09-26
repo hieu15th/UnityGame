@@ -186,6 +186,10 @@ public class LoginRegisterScript : MonoBehaviour
                 return;
             }
 
+            // Set timeout 10s
+            stream.ReadTimeout = 10000;
+            stream.WriteTimeout = 10000;
+
             byte[] usernameBytes = Encoding.UTF8.GetBytes(username);
             byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
             byte[] versionBytes = Encoding.UTF8.GetBytes("abxch123kasd_1");
@@ -197,7 +201,7 @@ public class LoginRegisterScript : MonoBehaviour
                 return;
             }
 
-            byte[] buffer = new byte[1 + 2 + dataSize]; 
+            byte[] buffer = new byte[1 + 2 + dataSize];
             int offset = 0;
             buffer[offset++] = CMD_LOGIN;
             buffer[offset++] = (byte)(dataSize >> 8);
@@ -216,7 +220,19 @@ public class LoginRegisterScript : MonoBehaviour
 
             stream.Write(buffer, 0, buffer.Length);
 
-            int bytesRead = stream.Read(buffer, 0, 1);
+            // Chờ phản hồi tối đa 10s
+            int bytesRead;
+            try
+            {
+                bytesRead = stream.Read(buffer, 0, 1);
+            }
+            catch (IOException)
+            {
+                Enqueue(() => UpdateStatus("⏰ Hết thời gian chờ phản hồi từ server (10s)."));
+                client.Close();
+                return;
+            }
+
             if (bytesRead != 1)
             {
                 Enqueue(() => UpdateStatus("Không nhận được phản hồi từ máy chủ"));
@@ -232,7 +248,7 @@ public class LoginRegisterScript : MonoBehaviour
                         PlayerPrefs.SetString("SavedUsername", username);
                         PlayerPrefs.SetString("SavedPassword", password);
                         PlayerPrefs.Save();
-                        StartCoroutine(GoToMainScene());
+                        SceneManager.LoadScene("Main");
                     });
                     break;
 
@@ -303,14 +319,6 @@ public class LoginRegisterScript : MonoBehaviour
         }
     }
 
-
-
-    private IEnumerator GoToMainScene()
-    {
-        UpdateStatus("Đăng nhập thành công! Đang chuyển...");
-        yield return new WaitForSeconds(3f);
-        SceneManager.LoadScene("Main");
-    }
 
     void OnRegisterButtonClicked()
     {

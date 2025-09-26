@@ -21,7 +21,7 @@ public class PlayerController : MonoBehaviour
     private Dictionary<string, Vector3> previousPositions = new Dictionary<string, Vector3>();
     private Dictionary<string, float> lastMoveTimes = new Dictionary<string, float>();
     private Dictionary<string, Vector3> targetPositions = new Dictionary<string, Vector3>();
-
+    public ZoneAttack zatt;
     void Update()
     {
         float currentTime = Time.time;
@@ -44,15 +44,81 @@ public class PlayerController : MonoBehaviour
             {
                 if (currentTime - lastTime > 0.1f)
                 {
-                    var animator = player.GetComponentInChildren<Animator>();
-                    if (animator != null && animator.GetBool("1_Move"))
+                    Animator[] animators = player.GetComponentsInChildren<Animator>(true);
+                    foreach (var anim in animators)
                     {
-                        animator.SetBool("1_Move", false);
+                        // Kiểm tra xem animator có parameter "1_Move" không
+                        if (anim.parameters.Any(p => p.name == "1_Move"))
+                        {
+                            anim.SetBool("1_Move", false);
+                        }
                     }
+
                 }
             }
         }
     }
+    public void HandleAttack(byte[] data)
+    {
+        if (data.Length < 1) return;
+
+        int index = 0;
+
+        // Đọc tên
+        int nameLen = data[index++];
+        if (nameLen <= 0 || data.Length < index + nameLen + 4)
+        {
+            Debug.LogError("❌ Dữ liệu Attack không hợp lệ.");
+            return;
+        }
+
+        string playerName = Encoding.UTF8.GetString(data, index, nameLen);
+        index += nameLen;
+
+        // Đọc idMob
+        int idMob = BitConverter.ToInt32(data, index);
+        index += 4;
+
+        Debug.Log($"⚔️ {playerName} attack mob {idMob}");
+
+        GameObject attacker = null;
+
+        // ✅ Kiểm tra có phải bản thân không
+        if (playerName == SocketManager.Instance.Username && currentPlayer != null)
+        {
+            attacker = currentPlayer;
+        }
+        else if (otherPlayers.TryGetValue(playerName, out GameObject other))
+        {
+            Debug.LogWarning($"Tìm thấy player {playerName} để thực hiện Attack.");
+            attacker = other;
+        }
+
+        if (attacker != null)
+        {
+            Animator[] animators = attacker.GetComponentsInChildren<Animator>(true);
+            foreach (var anim in animators)
+            {
+                // Kiểm tra xem animator có parameter "2_Attack" không
+                if (anim.parameters.Any(p => p.name == "2_Attack" && p.type == AnimatorControllerParameterType.Trigger))
+                {
+                    anim.SetTrigger("2_Attack");
+                }
+            }
+
+            ZoneAttack[] allZoneAttacks = Resources.FindObjectsOfTypeAll<ZoneAttack>();
+            foreach (var zatt in allZoneAttacks)
+            {
+                zatt.PlayAttackAnimation(idMob);
+            }
+
+        }
+        else
+        {
+            Debug.LogWarning($"⚠️ Không tìm thấy player {playerName} để thực hiện Attack.");
+        }
+    }
+
 
     public void HandleNpcList(byte[] data)
     {
@@ -64,9 +130,6 @@ public class PlayerController : MonoBehaviour
 
         int npcCount = BitConverter.ToInt32(data, 0); // ✔️ đúng vì Java ghi 4 byte
         int offset = 4; // ✔️ tăng offset lên 4
-
-
-        //Debug.Log($"📥 Số lượng NPC nhận được: {npcCount}");
 
         List<Npc> npcList = new List<Npc>();
 
@@ -115,10 +178,11 @@ public class PlayerController : MonoBehaviour
         if (data.Length < 1) return;
 
         int nameLen = data[0];
-        if (data.Length < 1 + nameLen + 68) return; // 64 = 16 (4 stats) + 8 (xy) + 40 (10 trang bị)
+        if (data.Length < 1 + nameLen + 72) return; // 64 = 16 (4 stats) + 8 (xy) + 40 (10 trang bị)
 
         string username = System.Text.Encoding.UTF8.GetString(data, 1, nameLen);
         int offset = 1 + nameLen;
+        int type = BitConverter.ToInt32(data, offset); offset += 4;
 
         float x = BitConverter.ToSingle(data, offset); offset += 4;
         float y = BitConverter.ToSingle(data, offset); offset += 4;
@@ -144,7 +208,7 @@ public class PlayerController : MonoBehaviour
         SocketManager.Instance.Username = username;
         SpawnPlayer(username, currentHP, maxHP, x, y, gold, diamond,
                     hair, body, head, facehair, helmet,
-                    armor, hand, leg, boot, weapon,cloak);
+                    armor, hand, leg, boot, weapon,cloak,type);
     }
 
 
@@ -158,7 +222,7 @@ public class PlayerController : MonoBehaviour
             if (index + 1 > data.Length) break;
 
             int nameLen = data[index++];
-            if (nameLen <= 0 || index + nameLen + 60 > data.Length)
+            if (nameLen <= 0 || index + nameLen + 64 > data.Length)
             {
                 Debug.LogWarning($"❌ Dữ liệu không hợp lệ. nameLen = {nameLen}, index = {index}, data.Length = {data.Length}");
                 break;
@@ -166,6 +230,7 @@ public class PlayerController : MonoBehaviour
 
             string name = Encoding.UTF8.GetString(data, index, nameLen);
             index += nameLen;
+            int type = BitConverter.ToInt32(data, index); index += 4;
 
             float x = BitConverter.ToSingle(data, index); index += 4;
             float y = BitConverter.ToSingle(data, index); index += 4;
@@ -202,13 +267,14 @@ public class PlayerController : MonoBehaviour
 
         int index = 0;
         int nameLen = data[index++];
-        if (nameLen <= 0 || data.Length < index + nameLen + 60) return;
+        if (nameLen <= 0 || data.Length < index + nameLen + 64) return;
 
         string name = Encoding.UTF8.GetString(data, index, nameLen);
         index += nameLen;
 
         //if (name == SocketManager.Instance.Username)
         //    return;
+        int type = BitConverter.ToInt32(data, index); index += 4;
 
         float x = BitConverter.ToSingle(data, index); index += 4;
         float y = BitConverter.ToSingle(data, index); index += 4;
@@ -256,10 +322,13 @@ public class PlayerController : MonoBehaviour
             targetPositions[name] = newPos;
             previousPositions[name] = newPos;
 
-            var animator = other.GetComponentInChildren<Animator>();
-            if (animator != null)
+            Animator[] animators = other.GetComponentsInChildren<Animator>(true);
+            foreach (var anim in animators)
             {
-                animator.SetBool("1_Move", true);
+                if (anim.parameters.Any(p => p.name == "1_Move"))
+                {
+                    anim.SetBool("1_Move", true);
+                }
             }
 
             lastMoveTimes[name] = Time.time;
@@ -292,46 +361,36 @@ public class PlayerController : MonoBehaviour
                         int gold, int diamond,
                         int hair, int body, int head, int facehair, int helmet,
                         int armor, int hand, int leg,
-                        int boot, int weapon,int cloak)
+                        int boot, int weapon, int cloak, int type)
     {
+        if (username != SocketManager.Instance.Username)
+        {
+            Debug.LogWarning($"SpawnPlayer chỉ dành cho chính bản thân, bỏ qua {username}");
+            return;
+        }
+
         GameObject player;
 
-        if (username == SocketManager.Instance.Username)
+        if (currentPlayer != null)
         {
-            if (currentPlayer != null)
+            // ✅ Nếu đã có player, chỉ cập nhật vị trí khi type == 0
+            player = currentPlayer;
+            if (type == 0)
             {
-                // ✅ Cập nhật bản thân nếu đã tồn tại
-                player = currentPlayer;
                 player.transform.position = new Vector3(x, y, 0);
-            }
-            else
-            {
-                // 🆕 Tạo mới bản thân
-                player = Instantiate(playerPrefab, new Vector3(x, y, 0), Quaternion.identity);
-                currentPlayer = player;
-                player.tag = "Player";
-                player.AddComponent<PlayerMovement>();
-                cammera.SetTarget(player.transform);
-                //Debug.Log("📍 Spawn bản thân");
             }
         }
         else
         {
-            if (otherPlayers.TryGetValue(username, out player))
-            {
-                // ✅ Cập nhật player khác nếu đã tồn tại
-                player.transform.position = new Vector3(x, y, 0);
-            }
-            else
-            {
-                // 🆕 Tạo mới player khác
-                player = Instantiate(playerPrefab, new Vector3(x, y, 0), Quaternion.identity);
-                player.tag = "Npc";
-                otherPlayers[username] = player;
-            }
+            // 🆕 Tạo mới player bản thân
+            player = Instantiate(playerPrefab, new Vector3(x, y, 0), Quaternion.identity);
+            currentPlayer = player;
+            player.tag = "Player";
+            player.AddComponent<PlayerMovement>();
+            cammera.SetTarget(player.transform);
         }
 
-        // 🧠 Cập nhật thông tin
+        // 🧠 Cập nhật thông tin stats
         Player stats = player.GetComponent<Player>() ?? player.AddComponent<Player>();
         stats.hp_max = maxHP;
         stats.hp_now = currentHP;
@@ -340,138 +399,89 @@ public class PlayerController : MonoBehaviour
 
         float hp = maxHP > 0 ? (float)currentHP / maxHP : 0;
 
+        // 🔤 Tên
         var nameText = player.transform.Find("Name")?.GetComponent<TextMeshPro>();
         if (nameText != null)
             nameText.text = username;
 
+        // ❤️ Thanh máu
         var healthTransform = player.transform.Find("HealthBar")?.Find("Health")?.GetComponent<Transform>();
         if (healthTransform == null)
-        {
             healthTransform = player.GetComponentsInChildren<Transform>()
                                     .FirstOrDefault(t => t.CompareTag("Health"))?.transform;
-        }
 
         if (healthTransform != null)
         {
-            var controller = healthTransform.GetComponent<HealthBarController>() ??
-                             healthTransform.gameObject.AddComponent<HealthBarController>();
-
+            var controller = healthTransform.GetComponent<HealthBarController>()
+                             ?? healthTransform.gameObject.AddComponent<HealthBarController>();
             controller.lerpSpeed = healthLerpSpeed;
             controller.SetHP(hp);
         }
-        else
-        {
-            Debug.LogWarning("[DEBUG] Không tìm thấy thanh máu với tag 'Health' hoặc dưới HealthBar/Health.");
-        }
 
+        // 👕 Gán parts
         PartManager.Instance.ApplyParts(player, hair, body, head, facehair, helmet,
-                   armor, hand, leg, boot, weapon, cloak);
+                                       armor, hand, leg, boot, weapon, cloak);
     }
 
-    public void SpawnOtherPlayer(string name, int hp, int maxHP, float x, float y,
-                            int hair, int body, int head, int facehair, int helmet,
-                            int armor,
-                            int hand, int leg,
-                            int boot, int weapon,int cloak)
-    {
 
+
+    public void SpawnOtherPlayer(string name, int hp, int maxHP, float x, float y,
+                             int hair, int body, int head, int facehair, int helmet,
+                             int armor, int hand, int leg, int boot, int weapon, int cloak)
+    {
+        Vector3 spawnPos = new Vector3(x, y, 0);
+
+        GameObject player;
+
+        // Nếu player đã tồn tại → cập nhật vị trí mới
         if (otherPlayers.TryGetValue(name, out GameObject existing))
         {
-            existing.transform.position = new Vector3(x, y, 0);
-
-            var controller = existing.GetComponentInChildren<HealthBarController>();
-            if (controller != null)
-            {
-                controller.SetHP((float)hp / maxHP);
-            }
-
-            Animator otherAnimator = existing.GetComponentInChildren<Animator>();
-            if (otherAnimator != null)
-            {
-                otherAnimator.SetBool("1_Move", false);
-            }
-            Debug.Log("Cập nhật lại player");
-            // 👉 Gọi lại ApplyParts nếu player đã tồn tại
-            PartManager.Instance.ApplyParts(existing, hair, body, head, facehair, helmet,
-                       armor, hand, leg, boot, weapon, cloak);
-            Player stats = existing.GetComponent<Player>() ?? existing.AddComponent<Player>();
-            stats.hp_max = maxHP;
-            stats.hp_now = hp;
-            return;
+            player = existing;
+            player.transform.position = spawnPos;
+            previousPositions[name] = spawnPos;
         }
+        else
+        {
+            // Tạo mới player
+            player = Instantiate(playerPrefab, spawnPos, Quaternion.identity);
+            player.tag = "Npc";
 
+            var nameText = player.transform.Find("Name")?.GetComponent<TextMeshPro>();
+            if (nameText != null) nameText.text = name;
 
-        GameObject player = Instantiate(playerPrefab, new Vector3(x, y, 0), Quaternion.identity);
-        player.tag = "Npc"; // ✅ Gán tag là "Npc" cho người chơi khác
-
-        // Hiển thị tên
-        var nameText = player.transform.Find("Name")?.GetComponent<TextMeshPro>();
-        if (nameText != null)
-            nameText.text = name;
+            otherPlayers[name] = player;
+            previousPositions[name] = spawnPos;
+        }
 
         // Health bar
-        var healthTransform = player.transform.Find("HealthBar")?.Find("Health")?.GetComponent<Transform>();
-        if (healthTransform == null)
-        {
-            healthTransform = player.GetComponentsInChildren<Transform>().FirstOrDefault(t => t.CompareTag("Health"))?.transform;
-        }
+        var healthTransform = player.transform.Find("HealthBar")?.Find("Health")?.GetComponent<Transform>()
+                              ?? player.GetComponentsInChildren<Transform>().FirstOrDefault(t => t.CompareTag("Health"))?.transform;
 
         if (healthTransform != null)
         {
-            var controller = healthTransform.GetComponent<HealthBarController>();
-            if (controller == null)
-                controller = healthTransform.gameObject.AddComponent<HealthBarController>();
-
+            var controller = healthTransform.GetComponent<HealthBarController>()
+                             ?? healthTransform.gameObject.AddComponent<HealthBarController>();
             controller.lerpSpeed = healthLerpSpeed;
             controller.SetHP((float)hp / maxHP);
         }
-        Player stats1 = player.GetComponent<Player>() ?? player.AddComponent<Player>();
-        stats1.hp_max = maxHP;
-        stats1.hp_now = hp;
 
-        Animator otherAnimator2 = player.GetComponentInChildren<Animator>();
-        if (otherAnimator2 != null)
+        // Stats
+        Player stats = player.GetComponent<Player>() ?? player.AddComponent<Player>();
+        stats.hp_max = maxHP;
+        stats.hp_now = hp;
+
+        // Animator reset trạng thái move
+        Animator[] animators = player.GetComponentsInChildren<Animator>(true);
+        foreach (var anim in animators)
         {
-            otherAnimator2.SetBool("1_Move", false);
+            if (anim.parameters.Any(p => p.name == "1_Move"))
+                anim.SetBool("1_Move", false);
         }
 
-        otherPlayers[name] = player;
-        previousPositions[name] = new Vector3(x, y, 0);
-
-        // 👉 Gán parts như người chơi chính
+        // Gán parts
         PartManager.Instance.ApplyParts(player, hair, body, head, facehair, helmet,
-                   armor, hand, leg, boot, weapon, cloak);
-
+                                        armor, hand, leg, boot, weapon, cloak);
     }
 
 
-    //private void UpdatePlayerSortingOrder()
-    //{
-    //    if (currentPlayer == null) return;
-
-    //    Vector3 myPos = currentPlayer.transform.position;
-    //    var myGroup = currentPlayer.GetComponent<UnityEngine.Rendering.SortingGroup>();
-
-    //    foreach (var kvp in otherPlayers)
-    //    {
-    //        GameObject other = kvp.Value;
-    //        if (other == null) continue;
-
-    //        Vector3 otherPos = other.transform.position;
-    //        var otherGroup = other.GetComponent<UnityEngine.Rendering.SortingGroup>();
-
-    //        if (Mathf.Abs(myPos.x - otherPos.x) <= 3f && myPos.y <= otherPos.y)
-    //        {
-    //            // Trường hợp đặc biệt: x nhỏ hơn và y nằm trong khoảng ±3
-    //            if (myGroup != null) myGroup.sortingOrder = 20;
-    //            if (otherGroup != null) otherGroup.sortingOrder = 10;
-    //        }
-    //        else
-    //        {
-    //            // Trường hợp mặc định: y thấp hơn → vẽ trên
-    //            if (myGroup != null) myGroup.sortingOrder = -(int)(myPos.y * 1000);
-    //            if (otherGroup != null) otherGroup.sortingOrder = -(int)(otherPos.y * 1000);
-    //        }
-    //    }
-    //}
 }

@@ -4,6 +4,7 @@ public class HealthBarController : MonoBehaviour
 {
     public float targetHP = 1f; // HP mục tiêu của thanh máu
     public float lerpSpeed = 5f; // Tốc độ chuyển đổi (Lerp speed)
+    public bool die = false;
 
     private void Update()
     {
@@ -11,30 +12,34 @@ public class HealthBarController : MonoBehaviour
         MobData mobData = GetComponentInParent<MobData>();
         if (mobData != null)
         {
-            // Cập nhật targetHP với tỷ lệ HP hiện tại so với HP tối đa của mob
             SetHP((float)mobData.current_hp / Mathf.Max(1, mobData.hp));
         }
 
         Player player = GetComponentInParent<Player>();
         if (player != null)
         {
-            // Cập nhật targetHP với tỷ lệ HP hiện tại so với HP tối đa của player
             SetHP((float)player.hp_now / Mathf.Max(1, player.hp_max));
         }
 
         // Lerp để giảm thanh máu mượt mà
-        float currentAbsX = transform.localScale.x; // Lấy chiều rộng hiện tại của thanh máu
-        float lerpedX = Mathf.Lerp(currentAbsX, targetHP, Time.deltaTime * lerpSpeed); // Tính toán chiều rộng mới
+        float currentAbsX = transform.localScale.x;
+        float lerpedX = Mathf.Lerp(currentAbsX, targetHP, Time.deltaTime * lerpSpeed);
 
-        // Cập nhật lại chiều rộng thanh máu
         Vector3 finalScale = transform.localScale;
-        finalScale.x = lerpedX; // Đặt chiều rộng mới của thanh máu
+        finalScale.x = lerpedX;
         transform.localScale = finalScale;
+
+        // Chỉ đánh dấu die khi thanh máu thực sự giảm về 0
+        if (!die && lerpedX <= 0.01f) // 0.01f để tránh float precision
+        {
+            die = true;
+            // Có thể thêm sự kiện hoặc hành động khác ở đây
+            // Debug.Log("Entity died!");
+        }
     }
 
-    // Cập nhật HP mục tiêu
     public void SetHP(float hp)
     {
-        targetHP = Mathf.Clamp01(hp); // Giới hạn HP trong khoảng [0, 1] để không vượt quá 100% hoặc 0%
+        targetHP = Mathf.Clamp01(hp);
     }
 }
