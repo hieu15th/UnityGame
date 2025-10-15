@@ -4,14 +4,16 @@ using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
-public class MenuManager : MonoBehaviour
+public class MenuManager : MonoBehaviour, IPointerClickHandler
 {
     [Header("UI References")]
     public Transform contentParent;
     public GameObject buttonPrefab;      // Prefab nút (TextMeshProUGUI + Button)
     public GameObject menu;              // Root Menu (có Image nền)
-    public GameObject closeButtonPrefab; // Prefab nút đóng
+    public RectTransform contentPanel;   // Panel con (img) chứa nội dung menu
+    public GameObject closeButtonPrefab; // Prefab nút đóng (nếu cần)
 
     private const sbyte CMD_SEND_MENU = -113;
 
@@ -27,25 +29,12 @@ public class MenuManager : MonoBehaviour
         menu.SetActive(true);
         menu.transform.SetAsLastSibling();
 
-        // Làm nền trong suốt nhưng chặn click
+        // Làm nền trong suốt nhưng vẫn chặn click
         Image bgImg = menu.GetComponent<Image>();
         if (bgImg != null)
         {
             bgImg.color = new Color(0, 0, 0, 0);
             bgImg.raycastTarget = true;
-
-            // Khi click nền thì tắt menu
-            Button bgBtn = menu.GetComponent<Button>();
-            if (bgBtn == null)
-                bgBtn = menu.gameObject.AddComponent<Button>();
-
-            bgBtn.transition = Selectable.Transition.None;
-            bgBtn.onClick.RemoveAllListeners();
-            bgBtn.onClick.AddListener(() =>
-            {
-                menu.SetActive(false);
-                Debug.Log("📌 Menu đóng khi click nền.");
-            });
         }
 
         // Xóa các item cũ
@@ -140,6 +129,19 @@ public class MenuManager : MonoBehaviour
         catch (Exception ex)
         {
             Debug.LogError("Lỗi khi gửi CMD -113: " + ex.Message);
+        }
+    }
+
+    // 👉 Xử lý click nền
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (!menu.activeSelf) return;
+
+        // Nếu click ra ngoài contentPanel → tắt menu
+        if (!RectTransformUtility.RectangleContainsScreenPoint(contentPanel, eventData.position, eventData.pressEventCamera))
+        {
+            menu.SetActive(false);
+            Debug.Log("📌 Menu đóng vì click ra ngoài content.");
         }
     }
 }

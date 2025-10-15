@@ -54,7 +54,7 @@ public class ZoneAttack : MonoBehaviour
                 MobData data = targetEnemy.GetComponent<MobData>();
                 if (transform.parent.CompareTag("Player") && data != null)
                 {
-                    message.SendAttack(-111, data.id);
+                    message.SendAttack(-111, data.id, transform.parent.GetComponent<SkillUse>().id_skill);
                 }
 
                 // Cập nhật thời gian gửi lần cuối
@@ -75,20 +75,53 @@ public class ZoneAttack : MonoBehaviour
         }
     }
     // Gọi khi server xác nhận attack hợp lệ
-    public void PlayAttackAnimation(int enemyId)
+    public void PlayAttackAnimation(int enemyId, int id_skill)
     {
-        // Tìm enemy theo ID
+        // 🔍 Tìm enemy theo ID
         Transform targetEnemy = enemiesInZone.Find(e =>
         {
             MobData mob = e.GetComponent<MobData>();
             return mob != null && mob.id == enemyId;
         });
 
-        if (targetEnemy == null) return;
-        // 🎬 Trigger animation "Hit" của enemy
-        var animatorEnemy = targetEnemy.GetComponentInChildren<Animator>();
-        animatorEnemy?.SetTrigger("Hit");
+        if (targetEnemy == null)
+        {
+            return;
+        }
+
+        // 🔎 Lấy tất cả Animator của enemy
+        var animators = targetEnemy.GetComponentsInChildren<Animator>(includeInactive: true);
+        if (animators == null || animators.Length == 0)
+            return;
+
+        foreach (var anim in animators)
+        {
+            if (anim == null || anim.runtimeAnimatorController == null)
+                continue;
+
+            // ✅ Kiểm tra xem có trigger "Hit" trong Animator không
+            if (HasParameter(anim, "Hit", AnimatorControllerParameterType.Trigger))
+            {
+                anim.SetTrigger("Hit");
+            }
+            var skill = "skill_0" + id_skill;
+            if (HasParameter(anim, skill, AnimatorControllerParameterType.Trigger))
+            {
+                anim.SetTrigger(skill);
+            }
+        }
     }
+
+    private bool HasParameter(Animator animator, string paramName, AnimatorControllerParameterType type)
+    {
+        foreach (var param in animator.parameters)
+        {
+            if (param.type == type && param.name == paramName)
+                return true;
+        }
+        return false;
+    }
+
 
     private void OnTriggerExit2D(Collider2D other)
     {

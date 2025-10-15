@@ -73,7 +73,14 @@ public class OptionScrollView : MonoBehaviour
                     }
                     else
                     {
-                        tmpText.text = $"{opt.name} {opt.param}";
+                        if(opt.param > 0)
+                        {
+                            tmpText.text = $"{opt.name} {opt.param}";
+                        }
+                        else
+                        {
+                            tmpText.text = $"{opt.name}";
+                        }
                     }
                     tmpText.fontSize = 10f;
                     tmpText.fontStyle = FontStyles.Normal;
@@ -139,8 +146,6 @@ public class OptionScrollView : MonoBehaviour
         if (gameObject.activeSelf)
         {
             gameObject.SetActive(false);
-
-            Debug.Log("🚫 Ẩn ScrollView.");
         }
     }
 

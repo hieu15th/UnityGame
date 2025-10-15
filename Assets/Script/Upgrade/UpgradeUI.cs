@@ -13,7 +13,8 @@ public class UpgradeUI : MonoBehaviour
     public Transform[] equipSlots;
     public MouseClickDetector click;
     public OptionScrollView optionScrollView;
-
+    public TextMeshProUGUI gold, ruby;
+    public TMP_SpriteAsset asgold, asruby;
     private Dictionary<int, ItemData> equippedItemMap = new Dictionary<int, ItemData>();
     public UpgradeManager upgradeManager;
     private int selectedIndex = -1;
@@ -50,7 +51,11 @@ public class UpgradeUI : MonoBehaviour
             if (Input.GetKeyDown(KeyCode.RightArrow)) MoveSelection(1);
             else if (Input.GetKeyDown(KeyCode.LeftArrow)) MoveSelection(-1);
         }
-
+        if(equippedItemMap.Count <= 1)
+        {
+            gold.gameObject.SetActive(false);
+            ruby.gameObject.SetActive(false);
+        }
         if (Input.GetMouseButtonDown(0))
         {
             bool clickedOnAnySlot = false;
@@ -70,6 +75,7 @@ public class UpgradeUI : MonoBehaviour
             if (clickOnLeft && selectedIndex >= 0)
             {
                 click.SendCommand("upgrade", index_choose);
+                selectedIndex = -1;
                 return;
             }
 
@@ -86,24 +92,7 @@ public class UpgradeUI : MonoBehaviour
             bool close = RectTransformUtility.RectangleContainsScreenPoint(btn_close.GetComponent<RectTransform>(), Input.mousePosition, Camera.main);
             if (close || cancel)
             {
-                // Xóa dữ liệu item trong map
-                equippedItemMap.Clear();
-
-                // Reset toàn bộ slot về trạng thái trống
-                for (int i = 0; i < equipSlots.Length; i++)
-                {
-                    ApplyToEquipSlot(i, -1, -1); // imgId = -1, color = -1 để reset
-                }
-
-                // Reset lựa chọn
-                choose = false;
-                selectedIndex = -1;
-                UpdateSelectedSlotVisual();
-                index_choose = -1;
-                // Ẩn panel option nếu đang mở
-                optionScrollView.Hide();
-                SetObjectActiveWithText("", btn_left);
-                SetObjectActiveWithText("", btn_cancel);
+                clear();
             }
 
         }
@@ -114,7 +103,26 @@ public class UpgradeUI : MonoBehaviour
         Debug.Log("✅ upgradeManager.check = true, xử lý tiếp...");
     }
 
+    public void clear()
+    {
+        equippedItemMap.Clear();
 
+        // Reset toàn bộ slot về trạng thái trống
+        for (int i = 0; i < equipSlots.Length; i++)
+        {
+            ApplyToEquipSlot(i, -1, -1); // imgId = -1, color = -1 để reset
+        }
+
+        // Reset lựa chọn
+        choose = false;
+        selectedIndex = -1;
+        UpdateSelectedSlotVisual();
+        index_choose = -1;
+        // Ẩn panel option nếu đang mở
+        optionScrollView.Hide();
+        SetObjectActiveWithText("", btn_left);
+        SetObjectActiveWithText("", btn_cancel);
+    }
     public void HandleAddUpgrade(byte[] data)
     {
         try
@@ -129,8 +137,6 @@ public class UpgradeUI : MonoBehaviour
                 if (itemCount == 1)
                 {
                     upgradeManager.ResetAllObjects();
-
-                    // Đợi check = true theo kiểu khác (ví dụ dùng callback hoặc sự kiện)
                     StartCoroutine(WaitForUpgradeCheck());
                 }
 
@@ -220,6 +226,22 @@ public class UpgradeUI : MonoBehaviour
                 }
 
                 UpdateSelectedSlotVisual();
+                int gold1 = ReadInt32BigEndian(reader);
+                int ruby1 = ReadInt32BigEndian(reader);
+                int rs = ReadInt32BigEndian(reader);
+                if (gold1 > 0 || ruby1 > 0)
+                {
+                    gold.gameObject.SetActive(true);
+                    ruby.gameObject.SetActive(true);
+                    gold.spriteAsset =asgold;
+                    ruby.spriteAsset =asruby;
+                    gold.text = "<sprite=0>     : " + FormatNumber(gold1);
+                    ruby.text = "<sprite=0>     : " + FormatNumber(ruby1);
+                }
+                if (rs > 0)
+                {
+                    upgradeManager.result = rs;
+                }
             }
         }
         catch (Exception ex)
@@ -227,6 +249,26 @@ public class UpgradeUI : MonoBehaviour
             Debug.LogError("❌ Lỗi khi đọc item_equip: " + ex.Message);
         }
     }
+    private string FormatNumber(int num)
+    {
+        if (num >= 1_000_000)
+        {
+            int main = num / 1_000_000;
+            int rest = (num % 1_000_000) / 100_000; // lấy 1 số sau M
+            return rest > 0 ? $"{main}M{rest}" : $"{main}M";
+        }
+        else if (num >= 1_000)
+        {
+            int main = num / 1_000;
+            int rest = (num % 1_000) / 100; // lấy 1 số sau k
+            return rest > 0 ? $"{main}k{rest}" : $"{main}k";
+        }
+        else
+        {
+            return num.ToString();
+        }
+    }
+
     public void SetObjectActiveWithText(string name, GameObject obj)
     {
         if (obj == null) return;
@@ -269,14 +311,22 @@ public class UpgradeUI : MonoBehaviour
 
         if (equippedItemMap.TryGetValue(index, out var item))
         {
-            if(index == 0)
+            // Nếu danh sách chỉ có 1 item → chỉ hiện Bỏ ra
+            if (equippedItemMap.Count == 1)
             {
                 SetObjectActiveWithText("Bỏ ra", btn_cancel);
-            } else
-            {
-                SetObjectActiveWithText("", btn_cancel);
+                SetObjectActiveWithText("", btn_left);
             }
-            SetObjectActiveWithText("Nâng cấp", btn_left);
+            else
+            {
+                if (index == 0)
+                    SetObjectActiveWithText("Bỏ ra", btn_cancel);
+                else
+                    SetObjectActiveWithText("", btn_cancel);
+
+                SetObjectActiveWithText("Nâng cấp", btn_left);
+            }
+
             optionScrollView.ShowOptions(item.options);
         }
         else

@@ -46,11 +46,13 @@ public class ShopLayout : MonoBehaviour, ISlotSelectable
             if (clickOnLeft && selectedSlotIndex >= 0)
             {
                 click.SendCommandBuy(selectedSlotIndex, type_shop);
+                selectedSlotIndex = -1;
                 return;
             }
             if (clickOnRight && selectedSlotIndex >= 0)
             {
                 click.SendCommandBuy( selectedSlotIndex, type_shop);
+                selectedSlotIndex = -1;
                 return;
             }
 
@@ -258,7 +260,7 @@ public class ShopLayout : MonoBehaviour, ISlotSelectable
         {
             Debug.LogError($"❌ Lỗi khi đọc dữ liệu túi: {ex.Message}");
         }
-        UI_Shop.OpenInventoryFromButton(2);
+        UI_Shop.OpenInventoryFromButton(3,0);
     }
 
 

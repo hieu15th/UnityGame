@@ -12,7 +12,7 @@ public class PlayerHpDel : MonoBehaviour
     public TMP_SpriteAsset hpSpriteAsset;
     private float moveDuration = 1f; // Thời gian di chuyển lên (1 giây)
     private int hp_old;
-
+    public Animator eff_blood;
     void Start()
     {
         player = GetComponent<Player>();
@@ -35,6 +35,8 @@ public class PlayerHpDel : MonoBehaviour
 
     private IEnumerator MoveTextUp(GameObject textObj)
     {
+        eff_blood.SetTrigger("blood");
+
         if (textObj == null) yield break;
 
         float elapsedTime = 0f;

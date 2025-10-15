@@ -1,15 +1,17 @@
-using System.Collections;
+﻿using System.Collections;
 using Unity.VisualScripting;
 using UnityEngine;
 
 public class MobAttack : MonoBehaviour
 {
-    [SerializeField]private GameObject eff_attack;
+    [SerializeField]private Animator eff_attack;
     private MobData target;
+    private AudioSource[] AudioSource;
     // Update is called once per frame
     private void Start()
     {
         target = transform.GetComponent<MobData>();
+        AudioSource = GetComponents<AudioSource>();
     }
     void Update()
     {
@@ -17,23 +19,34 @@ public class MobAttack : MonoBehaviour
     }
     public void HandleAttack()
     {
-        if (target.attack != false)
+        if (!target.attack)
+            return;
+        if (eff_attack == null || eff_attack.Equals(null))
+            return;
+
+        // Kiểm tra xem eff_attack có còn tồn tại không (tránh MissingReferenceException)
+        if (eff_attack && HasParameter(eff_attack, "Attack", AnimatorControllerParameterType.Trigger))
         {
-            eff_attack.SetActive(true);
-            target.attack = false;
-
-            // Start the coroutine to set attack to false after 0.25 seconds
-            StartCoroutine(SetAttackFalseAfterDelay(0.1f));
+            eff_attack.SetTrigger("Attack");
         }
+
+        target.attack = false;
+
+        if (AudioSource != null && AudioSource.Length > 0 && AudioSource[0] != null)
+            AudioSource[0].Play();
     }
 
-    private IEnumerator SetAttackFalseAfterDelay(float delay)
+    private bool HasParameter(Animator animator, string paramName, AnimatorControllerParameterType type)
     {
-        // Wait for the specified time
-        yield return new WaitForSeconds(delay);
+        if (!animator) // kiểm tra xem animator có còn sống không
+            return false;
 
-        // After 0.25 seconds, set the attack to false
-        eff_attack.SetActive(false);
-        Debug.Log("Target attack set to false after 0.25 seconds.");
+        foreach (var param in animator.parameters)
+        {
+            if (param.type == type && param.name == paramName)
+                return true;
+        }
+        return false;
     }
+
 }

@@ -89,14 +89,12 @@ public class MobsManager : MonoBehaviour
                 }
 
                 SpawmMobs();
-                Debug.Log($"📦 Đã nhận tổng cộng {mobCount} mobs.");
                 break;
 
             case 1:
                 // Kiểm tra dữ liệu trước khi đọc ID và HP
                 if (offset + 8 > data.Length)
                 {
-                    Debug.LogError("❌ Không đủ dữ liệu để đọc ID và HP của mob.");
                     return;
                 }
 
@@ -206,7 +204,6 @@ public class MobsManager : MonoBehaviour
                 if (mob.current_hp != 0)
                 {
                     int index = mob.part;
-                    Debug.Log($"part:{mob.part}");
                     if (index >= 1 && index <= mobPrefabs.Count && mobPrefabs[index - 1] != null)
                     {
                         GameObject prefab = mobPrefabs[index - 1];

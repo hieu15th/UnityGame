@@ -32,7 +32,6 @@ public class NpcClickHandler : MonoBehaviour
         if (player == null || Camera.main == null) return;
 
         HandleMouseClick();
-        HandleEnterKey();
         AutoDisableChooseWhenTooFar();
     }
 
@@ -102,27 +101,6 @@ public class NpcClickHandler : MonoBehaviour
             {
                 HandleNpcHit(hit.transform);
                 return;
-            }
-        }
-    }
-
-    private void HandleEnterKey()
-    {
-        // 🚫 Nếu menu đang mở thì bỏ qua Enter
-        if (IsMenuOpen()) return;
-
-        if (!Input.GetKeyDown(KeyCode.Return)) return;
-
-        foreach (var npc in GameObject.FindGameObjectsWithTag("Npc"))
-        {
-            Transform choose = npc.transform.Find("Choose");
-            if (choose != null && choose.gameObject.activeSelf)
-            {
-                var info = npc.GetComponent<NpcInfo>();
-                if (info != null)
-                {
-                    SendNpcRequest(info.id);
-                }
             }
         }
     }

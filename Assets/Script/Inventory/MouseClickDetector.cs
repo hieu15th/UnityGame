@@ -13,6 +13,8 @@ public class MouseClickDetector : MonoBehaviour
     private const sbyte CMD_SELL = -125;
     private const sbyte CMD_INFOR_UPGRADE = -124;
     private const sbyte CMD_UPGRADE = -123;
+    private const sbyte CMD_EQUIP_SKILL = -122;
+    private const sbyte CMD_UNEQUIP_SKILL = -121;
 
     // Gán giá trị này từ bên ngoài (vd: qua Unity Inspector hoặc script khác)
     public int itemIndex = -1;
@@ -44,6 +46,8 @@ public class MouseClickDetector : MonoBehaviour
                 "sell" => CMD_SELL,
                 "add_upgarde" => CMD_INFOR_UPGRADE,
                 "upgrade" => CMD_UPGRADE,
+                "equip_skill" => CMD_EQUIP_SKILL,
+                "unequip_skill" => CMD_UNEQUIP_SKILL,
                 _ => throw new ArgumentException($"Hành động không hợp lệ: {action}")
             };
             mess.SendMessage(-118, actionCode, index);

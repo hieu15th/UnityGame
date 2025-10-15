@@ -40,6 +40,12 @@ public class BagLayoutAdjuster : MonoBehaviour, ISlotSelectable
         {
             SetObjectActiveWithText("", btn_left);
         }
+        if(selectedSlotIndex <= 0)
+        {
+            SetObjectActiveWithText("", btn_left);
+            SetObjectActiveWithText("", btn_right);
+
+        }
         if (Input.GetMouseButtonDown(0))
         {
             bool clickOnContent = RectTransformUtility.RectangleContainsScreenPoint(content, Input.mousePosition, Camera.main);
@@ -106,6 +112,7 @@ public class BagLayoutAdjuster : MonoBehaviour, ISlotSelectable
                         break;
 
                 }
+                selectedSlotIndex = -1;
             }
             if (clickOnRight && selectedSlotIndex >= 0)
             {
@@ -176,7 +183,7 @@ public class BagLayoutAdjuster : MonoBehaviour, ISlotSelectable
                 SpawnSlots(slotCount);
 
                 int itemCount = ReadInt32BigEndian(reader);
-                //Debug.Log($"🔢 Tổng số item: {itemCount}");
+                Debug.Log($"🔢 Tổng số item: {itemCount}");
 
                 Dictionary<int, ItemData> itemMap = new Dictionary<int, ItemData>();
 
@@ -195,7 +202,7 @@ public class BagLayoutAdjuster : MonoBehaviour, ISlotSelectable
 
                     int optionCount = ReadInt32BigEndian(reader);
 
-                    //Debug.Log($"🧱 Item[{i}] - Index: {index}, ID: {itemId}, Color: {color}, Type: {type}, Img: {img}, Upgrade: {upgrade}, Quantity: {quantity}, Name: {itemName}, OptionCount: {optionCount}");
+                    Debug.Log($"🧱 Item[{i}] - Index: {index}, ID: {itemId}, Color: {color}, Type: {type}, Img: {img}, Upgrade: {upgrade}, Quantity: {quantity}, Name: {itemName}, OptionCount: {optionCount}");
 
                     List<OptionData> options = new List<OptionData>
                 {
@@ -329,8 +336,38 @@ public class BagLayoutAdjuster : MonoBehaviour, ISlotSelectable
                 }
 
                 UpdateSelectedSlotVisual();
-                //Debug.Log("✅ Giao diện túi đã cập nhật.");
+                if (selectedSlotIndex >= 0 && currentItemMap.TryGetValue(selectedSlotIndex, out var selectedItem))
+                {
+                    optionScrollView.ShowOptions(selectedItem.options);
 
+                    // Giữ lại nút bên trái/phải theo type
+                    switch (type)
+                    {
+                        case 0:
+                            SetObjectActiveWithText("Sử dụng", btn_left);
+                            SetObjectActiveWithText("Vứt bỏ", btn_right);
+                            break;
+                        case 1:
+                            if (selectedSlotIndex != upgradeUI.index_choose && selectedItem.type != 0 && selectedItem.upgrade < 20)
+                            {
+                                SetObjectActiveWithText("Bỏ vào", btn_left);
+                            }
+                            else
+                            {
+                                SetObjectActiveWithText("", btn_left);
+                            }
+                            break;
+                        case 2:
+                            SetObjectActiveWithText("Bán", btn_left);
+                            break;
+                    }
+                }
+                else
+                {
+                    optionScrollView.Hide();
+                    SetObjectActiveWithText("", btn_left);
+                    SetObjectActiveWithText("", btn_right);
+                }
             }
         }
         catch (Exception ex)

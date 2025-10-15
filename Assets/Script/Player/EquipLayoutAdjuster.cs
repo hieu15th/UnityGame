@@ -94,7 +94,6 @@ public class EquipLayoutAdjuster : MonoBehaviour
             using (BinaryReader reader = new BinaryReader(ms))
             {
                 int itemCount = ReadInt32BigEndian(reader);
-                Debug.Log($"🧥 Tổng số đồ đang mặc: {itemCount}");
 
                 for (int i = 0; i < itemCount; i++)
                 {

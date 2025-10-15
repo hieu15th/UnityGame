@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using TMPro;
-using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
 using UnityEngine.U2D.Animation; 
 using static Unity.Burst.Intrinsics.X86.Avx;
@@ -16,12 +15,17 @@ public class PlayerController : MonoBehaviour
     public GameObject playerPrefab;               // Gán prefab trong Inspector
     private GameObject currentPlayer;             // Đối tượng player hiện tại
     public CameraFollow cammera;
+    private AudioSource[] audio;
+    public CountdownTimer[] skills;
     public float healthLerpSpeed = 5f;
     private Dictionary<string, GameObject> otherPlayers = new Dictionary<string, GameObject>();
     private Dictionary<string, Vector3> previousPositions = new Dictionary<string, Vector3>();
     private Dictionary<string, float> lastMoveTimes = new Dictionary<string, float>();
     private Dictionary<string, Vector3> targetPositions = new Dictionary<string, Vector3>();
-    public ZoneAttack zatt;
+    private void Start()
+    {
+        audio = GetComponents<AudioSource>();
+    }
     void Update()
     {
         float currentTime = Time.time;
@@ -60,64 +64,108 @@ public class PlayerController : MonoBehaviour
     }
     public void HandleAttack(byte[] data)
     {
-        if (data.Length < 1) return;
+        if (data == null || data.Length < 1)
+        {
+            Debug.LogWarning("⚠️ Gói tin Attack trống hoặc null");
+            return;
+        }
 
         int index = 0;
 
-        // Đọc tên
+        // Đọc độ dài tên
         int nameLen = data[index++];
-        if (nameLen <= 0 || data.Length < index + nameLen + 4)
+        if (nameLen <= 0)
         {
-            Debug.LogError("❌ Dữ liệu Attack không hợp lệ.");
+            Debug.LogWarning("⚠️ nameLen <= 0, gói tin lỗi");
+            return;
+        }
+
+        // Kiểm tra còn đủ byte để đọc tên
+        if (index + nameLen > data.Length)
+        {
+            Debug.LogWarning($"⚠️ Gói tin Attack thiếu dữ liệu tên. data.Length={data.Length}, cần={index + nameLen}");
             return;
         }
 
         string playerName = Encoding.UTF8.GetString(data, index, nameLen);
         index += nameLen;
 
+        // 🔍 Kiểm tra còn đủ 8 byte cho 2 int (idMob + id_skill)
+        if (index + 8 > data.Length)
+        {
+            Debug.LogError($"❌ Gói tin Attack bị thiếu dữ liệu! (index={index}, length={data.Length})");
+            return;
+        }
+
         // Đọc idMob
         int idMob = BitConverter.ToInt32(data, index);
         index += 4;
 
-        Debug.Log($"⚔️ {playerName} attack mob {idMob}");
+        // Đọc id_skill
+        int id_skill = BitConverter.ToInt32(data, index);
+        index += 4;
 
+
+        // === Logic phần sau giữ nguyên ===
         GameObject attacker = null;
-
-        // ✅ Kiểm tra có phải bản thân không
         if (playerName == SocketManager.Instance.Username && currentPlayer != null)
-        {
             attacker = currentPlayer;
-        }
         else if (otherPlayers.TryGetValue(playerName, out GameObject other))
-        {
-            Debug.LogWarning($"Tìm thấy player {playerName} để thực hiện Attack.");
             attacker = other;
-        }
 
-        if (attacker != null)
-        {
-            Animator[] animators = attacker.GetComponentsInChildren<Animator>(true);
-            foreach (var anim in animators)
-            {
-                // Kiểm tra xem animator có parameter "2_Attack" không
-                if (anim.parameters.Any(p => p.name == "2_Attack" && p.type == AnimatorControllerParameterType.Trigger))
-                {
-                    anim.SetTrigger("2_Attack");
-                }
-            }
-
-            ZoneAttack[] allZoneAttacks = Resources.FindObjectsOfTypeAll<ZoneAttack>();
-            foreach (var zatt in allZoneAttacks)
-            {
-                zatt.PlayAttackAnimation(idMob);
-            }
-
-        }
-        else
+        if (attacker == null)
         {
             Debug.LogWarning($"⚠️ Không tìm thấy player {playerName} để thực hiện Attack.");
+            return;
+        }
+
+        // 🔥 Gọi animation nếu tồn tại trigger "2_Attack"
+        Animator[] animators = attacker.GetComponentsInChildren<Animator>(true);
+        foreach (var anim in animators)
+        {
+            // 🔹 Bỏ qua animator không có controller
+            if (anim == null || anim.runtimeAnimatorController == null)
+                continue;
+
+            // 🔹 Kiểm tra parameter tồn tại
+            if (anim.parameters.Any(p => p.name == "2_Attack" && p.type == AnimatorControllerParameterType.Trigger))
+            {
+                anim.SetTrigger("2_Attack");
+
+                // Nếu là người chơi hiện tại thì xử lý UI skill
+                if (attacker == currentPlayer)
+                {
+                    GameObject firstUISkill = Resources.FindObjectsOfTypeAll<GameObject>()
+                        .FirstOrDefault(obj => obj.name == "UI_SKILL");
+
+                    if (firstUISkill != null)
+                    {
+                        var s = firstUISkill.GetComponent<Skill>();
+                        if (s != null)
+                        {
+                            int idx = s.selectedSkillIndex;
+
+                            // ✅ Kiểm tra an toàn trước khi truy cập mảng
+                            if (idx >= 0 && idx < skills.Length && skills[idx] != null)
+                            {
+                                skills[idx].StartCountdown();
+                            }
+                        }
+                    }
+                }
+
+                // 🔊 Phát âm thanh
+                if (audio != null && audio.Length > 0 && audio[0] != null)
+                    audio[0].Play();
+            }
+        }
+        // Gọi hiệu ứng khu vực
+        foreach (var zatt in Resources.FindObjectsOfTypeAll<ZoneAttack>())
+        {
+            zatt.PlayAttackAnimation(idMob, -id_skill);
         }
     }
+
 
 
     public void HandleNpcList(byte[] data)
@@ -175,41 +223,70 @@ public class PlayerController : MonoBehaviour
 
     public void HandleSpawnPlayer(byte[] data)
     {
-        if (data.Length < 1) return;
+        try
+        {
+            if (data == null || data.Length < 1)
+            {
+                Debug.LogWarning("[SpawnPlayer] ❌ Dữ liệu rỗng hoặc null");
+                return;
+            }
 
-        int nameLen = data[0];
-        if (data.Length < 1 + nameLen + 72) return; // 64 = 16 (4 stats) + 8 (xy) + 40 (10 trang bị)
+            int nameLen = data[0];
+            if (data.Length < 1 + nameLen + 72)
+            {
+                Debug.LogWarning($"[SpawnPlayer] ❌ Gói tin quá ngắn. Length={data.Length}, nameLen={nameLen}");
+                return;
+            }
 
-        string username = System.Text.Encoding.UTF8.GetString(data, 1, nameLen);
-        int offset = 1 + nameLen;
-        int type = BitConverter.ToInt32(data, offset); offset += 4;
+            // Đọc tên người chơi
+            string username = System.Text.Encoding.UTF8.GetString(data, 1, nameLen);
+            int offset = 1 + nameLen;
 
-        float x = BitConverter.ToSingle(data, offset); offset += 4;
-        float y = BitConverter.ToSingle(data, offset); offset += 4;
+            int type = BitConverter.ToInt32(data, offset); offset += 4;
 
-        int currentHP = BitConverter.ToInt32(data, offset); offset += 4;
-        int maxHP = BitConverter.ToInt32(data, offset); offset += 4;
+            float x = BitConverter.ToSingle(data, offset); offset += 4;
+            float y = BitConverter.ToSingle(data, offset); offset += 4;
 
-        int gold = BitConverter.ToInt32(data, offset); offset += 4;
-        int diamond = BitConverter.ToInt32(data, offset); offset += 4;
+            int currentHP = BitConverter.ToInt32(data, offset); offset += 4;
+            int maxHP = BitConverter.ToInt32(data, offset); offset += 4;
 
-        int head = BitConverter.ToInt32(data, offset); offset += 4;
-        int facehair = BitConverter.ToInt32(data, offset); offset += 4;
-        int helmet = BitConverter.ToInt32(data, offset); offset += 4;
-        int hair = BitConverter.ToInt32(data, offset); offset += 4;
-        int body = BitConverter.ToInt32(data, offset); offset += 4;
-        int armor = BitConverter.ToInt32(data, offset); offset += 4;
-        int hand = BitConverter.ToInt32(data, offset); offset += 4;
-        int leg = BitConverter.ToInt32(data, offset); offset += 4;
-        int boot = BitConverter.ToInt32(data, offset); offset += 4;
-        int weapon = BitConverter.ToInt32(data, offset); offset += 4;
-        int cloak = BitConverter.ToInt32(data, offset); offset += 4;
+            int gold = BitConverter.ToInt32(data, offset); offset += 4;
+            int diamond = BitConverter.ToInt32(data, offset); offset += 4;
 
-        SocketManager.Instance.Username = username;
-        SpawnPlayer(username, currentHP, maxHP, x, y, gold, diamond,
-                    hair, body, head, facehair, helmet,
-                    armor, hand, leg, boot, weapon,cloak,type);
+            int head = BitConverter.ToInt32(data, offset); offset += 4;
+            int facehair = BitConverter.ToInt32(data, offset); offset += 4;
+            int helmet = BitConverter.ToInt32(data, offset); offset += 4;
+            int hair = BitConverter.ToInt32(data, offset); offset += 4;
+            int body = BitConverter.ToInt32(data, offset); offset += 4;
+            int armor = BitConverter.ToInt32(data, offset); offset += 4;
+            int hand = BitConverter.ToInt32(data, offset); offset += 4;
+            int leg = BitConverter.ToInt32(data, offset); offset += 4;
+            int boot = BitConverter.ToInt32(data, offset); offset += 4;
+            int weapon = BitConverter.ToInt32(data, offset); offset += 4;
+            int cloak = BitConverter.ToInt32(data, offset); offset += 4;
+
+            // 🧩 Log debug chi tiết
+            Debug.Log(
+                $"[SpawnPlayer] ✅ {username}\n" +
+                $"Type: {type}, Pos: ({x:F2}, {y:F2})\n" +
+                $"HP: {currentHP}/{maxHP}, Gold: {gold}, Diamond: {diamond}\n" +
+                $"Equip: head={head}, facehair={facehair}, helmet={helmet}, hair={hair}, body={body}, armor={armor}, hand={hand}, leg={leg}, boot={boot}, weapon={weapon}, cloak={cloak}"
+            );
+
+            // Cập nhật thông tin người chơi
+            SocketManager.Instance.Username = username;
+
+            // Gọi hàm spawn player
+            SpawnPlayer(username, currentHP, maxHP, x, y, gold, diamond,
+                        hair, body, head, facehair, helmet,
+                        armor, hand, leg, boot, weapon, cloak, type);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[SpawnPlayer] ❌ Lỗi khi giải mã gói tin: {ex.Message}\n{ex.StackTrace}");
+        }
     }
+
 
 
 
@@ -224,7 +301,6 @@ public class PlayerController : MonoBehaviour
             int nameLen = data[index++];
             if (nameLen <= 0 || index + nameLen + 64 > data.Length)
             {
-                Debug.LogWarning($"❌ Dữ liệu không hợp lệ. nameLen = {nameLen}, index = {index}, data.Length = {data.Length}");
                 break;
             }
 
@@ -249,7 +325,6 @@ public class PlayerController : MonoBehaviour
             int boot = BitConverter.ToInt32(data, index); index += 4;
             int weapon = BitConverter.ToInt32(data, index); index += 4;
             int cloak = BitConverter.ToInt32(data, index); index += 4;
-            Debug.LogWarning($"Nhận dữ liệu người chơi khác");
 
             SpawnOtherPlayer(name, currentHP, maxHP, x, y,
                     hair, body, head, facehair, helmet,
@@ -297,7 +372,6 @@ public class PlayerController : MonoBehaviour
 
         if (!otherPlayers.TryGetValue(name, out GameObject other))
         {
-            Debug.Log($"🟡 Người chơi mới xuất hiện: {name}");
             SpawnOtherPlayer(name, currentHP, maxHP, x, y,
                 hair, body, head, facehair, helmet,
                 armor, hand, leg, boot, weapon, cloak);
@@ -365,7 +439,6 @@ public class PlayerController : MonoBehaviour
     {
         if (username != SocketManager.Instance.Username)
         {
-            Debug.LogWarning($"SpawnPlayer chỉ dành cho chính bản thân, bỏ qua {username}");
             return;
         }
 

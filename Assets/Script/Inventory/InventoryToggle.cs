@@ -1,84 +1,52 @@
-﻿using System.Collections;
-using TMPro;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class InventoryToggle : MonoBehaviour
 {
-    public GameObject inventoryUI; // Panel chính
-    public Button openButton;      // Nút mở
-    public Button closeButton;     // Nút đóng
+    public GameObject inventoryUI;
+    public Button openButton;
+    public Button closeButton;
 
-    public GameObject bgr;         // Background Panel
-    private GameObject UI_1, UI_2;         // UI túi
-    public GameObject Bag,Char,Upgrade,Shop;          // UI nhân vật
-    public GameObject select;          // UI nhân vật
+    public GameObject bgr;
+    public GameObject Bag, Char, Upgrade, Shop, Skill;
+    public GameObject select;
     public GameObject ScrollView;
-    public Button leftButton;      // Nút trái
-    public Button rightButton;     // Nút phải
+    public Button leftButton;
+    public Button rightButton;
+
+    private List<GameObject> activeTabs = new List<GameObject>();
+    private int currentTabIndex = 0;
     private bool isOpen = false;
-    private bool showingBag = true;
+
     [SerializeField] private MessageManager mess;
     [SerializeField] private BagLayoutAdjuster bag;
+    [SerializeField] private UpgradeUI upgrade;
 
     void Start()
     {
         if (mess == null)
         {
             mess = Object.FindFirstObjectByType<MessageManager>();
-
             if (mess == null)
             {
                 Debug.LogError("❌ Không tìm thấy MessageManager trong scene.");
                 return;
             }
         }
-        //if (Upgrade == null)
-        //{
-        //    Debug.LogError("Upgrade vẫn chưa được gán trong " + gameObject.name);
-        //    Upgrade = GameObject.Find("UI_Upgrade");
-        //    if (Upgrade != null)
-        //    {
-        //        Debug.Log("Gán thành công Upgrade bằng Find");
-        //    }
-        //}
+
         closeButton.onClick.AddListener(CloseInventory);
-        leftButton.onClick.AddListener(SwitchTab);
-        rightButton.onClick.AddListener(SwitchTab);
-
-        //UpdateTab();
+        leftButton.onClick.AddListener(() => SwitchTab(-1));
+        rightButton.onClick.AddListener(() => SwitchTab(1));
     }
 
-    void Default()
-    {
-        Load(0);
-    }
-    void Load(int index)
-    {
-        switch (index)
-        {
-            case 0:
-                UI_1 = Bag;
-                UI_2 = Char;
-                break;
-            case 1:
-                UI_1 = Upgrade;
-                UI_2 = Bag;
-                break;
-            case 2:
-                UI_1 = Shop;
-                UI_2 = Bag;
-                break;
-        }
-        bag.type = index;
-    }
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.I))
         {
             if (!isOpen)
             {
-                Default();
+                Load(0, 1, 4); // ví dụ mặc định mở Bag + Char
                 ShowUIOnly();
             }
             else
@@ -88,60 +56,100 @@ public class InventoryToggle : MonoBehaviour
         }
     }
 
+    // 👉 Hàm Load mới: cho phép truyền nhiều tab
+    public void Load(params int[] indices)
+    {
+        activeTabs.Clear();
+        foreach (int i in indices)
+        {
+            switch (i)
+            {
+                case 0: activeTabs.Add(Bag); break;
+                case 1: activeTabs.Add(Char); break;
+                case 2: activeTabs.Add(Upgrade); break;
+                case 3: activeTabs.Add(Shop); break;
+                case 4: activeTabs.Add(Skill); break;
+            }
+        }
+        currentTabIndex = 0;
+    }
     private void ShowUIOnly()
     {
         isOpen = true;
-
         inventoryUI.SetActive(true);
         bgr.SetActive(true);
-        UI_1.SetActive(true);
-        if(UI_1 == Bag)
-        {
-            ScrollView.SetActive(true);
-        }
-        UI_2.SetActive(false);
         openButton.gameObject.SetActive(false);
-        select.SetActive(false);        
+        select.SetActive(false);
+
         UpdateTab();
     }
 
     public void CloseInventory()
     {
         if (!isOpen) return;
-
         isOpen = false;
-
+        upgrade.clear();
         inventoryUI.SetActive(false);
         bgr.SetActive(false);
-        UI_1.SetActive(false);
+        Bag.SetActive(false);
+        Char.SetActive(false);
+        Upgrade.SetActive(false);
+        Shop.SetActive(false);
+        Skill.SetActive(false);
         ScrollView.SetActive(false);
-        UI_2.SetActive(false);
         openButton.gameObject.SetActive(true);
         select.SetActive(true);
     }
 
-    private void SwitchTab()
+    private void SwitchTab(int direction)
     {
-        showingBag = !showingBag;
+        if (activeTabs.Count == 0) return;
+
+        currentTabIndex += direction;
+        if (currentTabIndex >= activeTabs.Count) currentTabIndex = 0;
+        if (currentTabIndex < 0) currentTabIndex = activeTabs.Count - 1;
+
         UpdateTab();
     }
-    public void OpenInventoryFromButton(int index)
+
+    public void OpenInventoryFromButton(params int[] indices)
     {
+        switch (indices[0])
+        {
+            case 2: bag.type = 1; break;
+            case 3: bag.type = 2; break;
+            default: bag.type = 0; break;
+        }
         if (!isOpen)
         {
-            Load(index);
+            Load(indices);
             ShowUIOnly();
         }
     }
 
     private void UpdateTab()
     {
-        UI_1.SetActive(showingBag);
+        // Tắt tất cả tab
+        Bag.SetActive(false);
+        Char.SetActive(false);
+        Upgrade.SetActive(false);
+        Shop.SetActive(false);
+        Skill.SetActive(false);
+        ScrollView.SetActive(false);
 
-        UI_2.SetActive(!showingBag);
-        if(UI_2.activeSelf && UI_2 == Bag)
-        {
+        if (activeTabs.Count == 0) return;
+
+        GameObject tab = activeTabs[currentTabIndex];
+        tab.SetActive(true);
+
+        if (tab == Bag)
             ScrollView.SetActive(true);
-        }
+
+        // Gán type cho BagLayoutAdjuster nếu có
+        //if (tab == Bag) bag.type = 0;
+        //else if (tab == Char) bag.type = 1;
+        //else if (tab == Upgrade) bag.type = 2;
+        //else if (tab == Shop) bag.type = 3;
+        //else if (tab == Skill) bag.type = 4;
     }
 }

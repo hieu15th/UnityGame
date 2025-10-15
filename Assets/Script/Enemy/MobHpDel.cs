@@ -7,10 +7,9 @@ public class MobHpDel : MonoBehaviour
     [SerializeField] private GameObject m_gameObject;  // GameObject chứa chữ
     [SerializeField] private GameObject textPrefab;    // Prefab chứa chữ
     [SerializeField] private Vector3 textPositionOffset; // Vị trí lệch của chữ so với m_gameObject
-
     private GameObject currentText;
     private float moveDuration = 1f; // Thời gian di chuyển lên (1 giây)
-
+    public TMP_SpriteAsset hp;
     // Coroutine để di chuyển chữ lên trên trong 1 giây
     private IEnumerator MoveTextUp()
     {
@@ -55,7 +54,8 @@ public class MobHpDel : MonoBehaviour
             TextMeshPro tmpText = currentText.GetComponent<TextMeshPro>(); // Nếu dùng TextMeshPro
             if (tmpText != null)
             {
-                tmpText.text = "-" + text;
+                tmpText.spriteAsset = hp;
+                tmpText.text = "- <size=70%><sprite=0></size>    " + text; 
             }
         }
     }
@@ -93,7 +93,18 @@ public class MobHpDel : MonoBehaviour
         // Giữ nguyên scale của prefab
         currentText.transform.localScale = textPrefab.transform.localScale;
 
-        // Cập nhật nội dung chữ, chuyển damage thành string
+        Canvas textCanvas = currentText.GetComponentInChildren<Canvas>();
+        if (textCanvas != null)
+        {
+            textCanvas.overrideSorting = true;
+            textCanvas.sortingOrder = 10;
+        }
+        else
+        {
+            var renderer = currentText.GetComponentInChildren<MeshRenderer>();
+            if (renderer != null)
+                renderer.sortingOrder = 10;
+        }
         UpdateHpText(damage.ToString());
 
         // Tính toán tốc độ di chuyển (di chuyển lên trong 1 giây)

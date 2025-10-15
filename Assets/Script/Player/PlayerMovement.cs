@@ -58,8 +58,7 @@ public class PlayerMovement : MonoBehaviour
         if (attackCooldown > 0f)
             attackCooldown -= Time.deltaTime;
 
-        // UI đang mở => không di chuyển
-        if (!CanMove())
+        if (!joy.gameObject.activeSelf)
         {
             movement = Vector2.zero;
             if (animator) animator.SetBool("1_Move", false);
@@ -141,20 +140,5 @@ public class PlayerMovement : MonoBehaviour
         {
             Debug.LogError("❌ Không gửi được tọa độ: " + ex.Message);
         }
-    }
-
-    private bool CanMove()
-    {
-        bool isBagOpen = false;
-        bool isMenuOpen = false;
-
-        foreach (var ui in GameObject.FindGameObjectsWithTag("UI_Bag"))
-            if (ui.activeInHierarchy) { isBagOpen = true; break; }
-
-        foreach (var ui in GameObject.FindGameObjectsWithTag("Menu"))
-            if (ui.activeInHierarchy) { isMenuOpen = true; break; }
-
-        // ✅ Không cho di chuyển nếu có UI mở
-        return isBagOpen && !isMenuOpen;
     }
 }

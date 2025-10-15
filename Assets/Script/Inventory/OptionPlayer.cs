@@ -12,13 +12,13 @@ public class OptionPlayer : MonoBehaviour
 
     private static readonly string[] StatLabels =
     {
-        "Máu",
-        "Tấn công",
-        "Chí mạng",
-        "Phòng thủ",
-        "Phản đòn",
-        "Hút máu",
-        "Né đòn"
+        "HP",
+        "ATK",
+        "CRIT",
+        "DEF",
+        "CR",
+        "LS",
+        "EV"
     };
 
     public void UpdateLines(byte[] data)

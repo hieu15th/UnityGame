@@ -25,7 +25,7 @@ public class UIManager : MonoBehaviour
                 //Debug.Log("📦 Mở giao diện nâng cấp");
 
                 if (UI_Upgrade != null)
-                    UI_Upgrade.OpenInventoryFromButton(1);
+                    UI_Upgrade.OpenInventoryFromButton(2,0);
                 else
                     Debug.LogWarning("⚠️ UI_Upgrade chưa được gán trong Inspector");
 

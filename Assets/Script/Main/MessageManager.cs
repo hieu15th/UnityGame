@@ -36,7 +36,7 @@ public class MessageManager : MonoBehaviour
             Debug.LogError("Lỗi khi gửi CMD " + cmd + ": " + ex.Message);
         }
     }
-    public void SendAttack(sbyte cmd, int id)
+    public void SendAttack(sbyte cmd, int id, int id_skill)
     {
         try
         {
@@ -46,25 +46,35 @@ public class MessageManager : MonoBehaviour
                 Debug.LogWarning("⚠️ Writer chưa được khởi tạo.");
                 return;
             }
-            writer.Write(cmd); 
 
-            writer.Write((byte)0x00); 
-            writer.Write((byte)0x04); 
+            // --- Gửi command ---
+            writer.Write(cmd);
 
-            // Gửi index kiểu int (4 byte, BigEndian)
-            byte[] indexBytes = BitConverter.GetBytes(id);
+            // --- Header độ dài (0x00 0x08 = 8 byte dữ liệu sau) ---
+            writer.Write((byte)0x00);
+            writer.Write((byte)0x08);
+
+            // --- Gửi id (4 byte Big Endian) ---
+            byte[] idBytes = BitConverter.GetBytes(id);
             if (BitConverter.IsLittleEndian)
-                Array.Reverse(indexBytes); 
-            writer.Write(indexBytes); 
+                Array.Reverse(idBytes);
+            writer.Write(idBytes);
+
+            // --- Gửi id_skill (4 byte Big Endian) ---
+            byte[] skillBytes = BitConverter.GetBytes(id_skill);
+            if (BitConverter.IsLittleEndian)
+                Array.Reverse(skillBytes);
+            writer.Write(skillBytes);
 
             writer.Flush();
 
         }
         catch (Exception ex)
         {
-            Debug.LogError($"❌ Lỗi khi gửi message:" + cmd + " lỗi" + ex.Message);
+            Debug.LogError($"❌ Lỗi khi gửi message cmd={cmd}: {ex.Message}");
         }
     }
+
     public void SendMessage(sbyte cmd, sbyte subcmd, int index)
     {
         try

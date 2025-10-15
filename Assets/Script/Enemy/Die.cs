@@ -1,14 +1,18 @@
-﻿using Unity.VisualScripting;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class Die : MonoBehaviour
 {
     private MobData mobData;
     private Animator animator;
     private GameObject hp;
+    private AudioSource[] hpSource;
     public HealthBarController healthBarController;
+
+    private bool isDead = false; // ✅ flag để tránh gọi nhiều lần
+
     void Start()
     {
+        hpSource = GetComponents<AudioSource>();
         if (mobData == null)
         {
             mobData = gameObject.GetComponent<MobData>();
@@ -17,11 +21,10 @@ public class Die : MonoBehaviour
         {
             animator = GetComponentInChildren<Animator>();
         }
-        if(hp == null)
+        if (hp == null)
         {
             hp = transform.Find("Heath_Bar")?.gameObject;
 
-            // Kiểm tra nếu đối tượng không tồn tại
             if (hp == null)
             {
                 Debug.LogError("❌ Không tìm thấy đối tượng 'Heath_Bar' trong các đối tượng con.");
@@ -29,14 +32,25 @@ public class Die : MonoBehaviour
         }
     }
 
-    // Update is called once per frame
     void Update()
     {
-        if (healthBarController.die)
+        if (healthBarController.die && !isDead) // ✅ chỉ chạy 1 lần
         {
+            isDead = true;
+
+            if (hpSource.Length > 1)
+            {
+                hpSource[1].Play();
+            }
+
             animator.SetBool("Dead", true);
-            Destroy(hp);
-            Destroy(gameObject, 3);
+
+            if (hp != null)
+            {
+                Destroy(hp);
+            }
+
+            Destroy(gameObject, 3); // hủy sau 3s
         }
     }
 }
