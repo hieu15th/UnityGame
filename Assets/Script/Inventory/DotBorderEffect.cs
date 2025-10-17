@@ -4,7 +4,7 @@ using UnityEngine.UI;
 public class DotBorderEffect : MonoBehaviour
 {
     public RectTransform[] dots; // Kéo thả dot vào đây (1-4)
-    public float speed = 50f;    // Tốc độ di chuyển (pixels/sec)
+    public float speed = 70f;    // Tốc độ di chuyển (pixels/sec)
     public Color dotColor = Color.red;
 
     private RectTransform rect;

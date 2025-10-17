@@ -73,16 +73,29 @@ public class Main : MonoBehaviour
 
     private void StartListening()
     {
+        if (SocketManager.Instance?.Reader == null)
+        {
+            Debug.LogError("⚠️ SocketManager chưa sẵn sàng, không thể start listen.");
+            return;
+        }
+
         if (listenThread != null && listenThread.IsAlive)
         {
-            listenThread.Abort(); // Hoặc dùng flag để dừng thread cũ nếu cần
+            isRunning = false;
+            listenThread.Interrupt();
+            listenThread.Join(500);
         }
 
         isRunning = true;
-        listenThread = new Thread(ListenToServer);
-        listenThread.IsBackground = true;
+        listenThread = new Thread(ListenToServer)
+        {
+            IsBackground = true
+        };
         listenThread.Start();
+
+        Debug.Log("🎧 Listen thread started successfully");
     }
+
 
     void Update()
     {
@@ -97,12 +110,12 @@ public class Main : MonoBehaviour
             listenThread.Interrupt();
     }
 
+
     private void EnqueueMainThread(Action action)
     {
         mainThreadActions.Enqueue(action);
     }
 
-    MemoryStream buffer = new MemoryStream();
 
     private void ListenToServer()
     {
@@ -114,40 +127,58 @@ public class Main : MonoBehaviour
 
             while (isRunning)
             {
-                // Đọc dữ liệu mới từ socket
                 int bytesRead = reader.BaseStream.Read(recvBuffer, 0, recvBuffer.Length);
                 if (bytesRead <= 0)
                 {
-                    Debug.LogWarning("⚠️ Server ngắt kết nối hoặc socket bị đóng.");
+                    Debug.LogWarning($"[{DateTime.Now:HH:mm:ss.fff}] ⚠️ Server ngắt kết nối hoặc socket bị đóng.");
                     break;
                 }
 
-                // Ghi dữ liệu mới vào buffer
                 buffer.Write(recvBuffer, 0, bytesRead);
+                Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}] 📩 Nhận {bytesRead} bytes, tổng buffer hiện tại = {buffer.Length}");
 
-                // Phân tích buffer để xử lý các gói đầy đủ
-                while (buffer.Length >= 3) // cần tối thiểu 3 byte: cmd + 2 byte size
+                while (true)
                 {
-                    byte[] buf = buffer.ToArray();
+                    // Chưa đủ header
+                    if (buffer.Length < 3)
+                    {
+                        Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}] 🟡 Chưa đủ header (mới có {buffer.Length}/3 bytes).");
+                        break;
+                    }
 
+                    byte[] buf = buffer.ToArray();
                     sbyte cmd = (sbyte)buf[0];
                     ushort size = (ushort)((buf[1] << 8) | buf[2]);
 
-                    // Nếu chưa đủ dữ liệu để xử lý gói này, chờ thêm
-                    if (buffer.Length < 3 + size)
-                        break;
+                    // Kiểm tra size bất thường
+                    //if (size > 5000)
+                    //{
+                    //    Debug.LogError($"[{DateTime.Now:HH:mm:ss.fff}] 🚨 Gói bất thường: CMD={cmd}, size={size}, buffer={buffer.Length}");
+                    //    Debug.LogError($"[{DateTime.Now:HH:mm:ss.fff}] ⛔ HEX: {BitConverter.ToString(buf, 0, Math.Min(32, buf.Length))}");
+                    //    buffer.SetLength(0);
+                    //    break;
+                    //}
 
-                    // Trích dữ liệu của gói
+                    // Nếu chưa đủ dữ liệu cho gói này
+                    if (buffer.Length < 3 + size)
+                    {
+                        Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}] ⏳ Gói CMD={cmd} (0x{cmd:X2}) CHƯA ĐỦ: {buffer.Length}/{3 + size} bytes.");
+                        Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}]    HEX hiện tại: {BitConverter.ToString(buf, 0, (int)buffer.Length)}");
+                        break;
+                    }
+
+                    // ✅ Đã đủ dữ liệu -> xử lý
                     byte[] data = new byte[size];
                     Array.Copy(buf, 3, data, 0, size);
 
-                    // Cắt phần đã xử lý khỏi buffer
                     int remaining = (int)(buffer.Length - (3 + size));
+
+                    // Dọn buffer cũ
                     buffer.SetLength(0);
                     if (remaining > 0)
                         buffer.Write(buf, 3 + size, remaining);
 
-                    // Xử lý command
+                    Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}] ✅ Gói HOÀN CHỈNH: CMD={cmd} (0x{cmd:X2}), size={size}, data đầu={BitConverter.ToString(data, 0, Math.Min(8, data.Length))}");
                     HandleCommand(cmd, data);
                 }
             }
@@ -158,143 +189,180 @@ public class Main : MonoBehaviour
             {
                 EnqueueMainThread(() =>
                 {
-                    Debug.LogWarning("⚠️ Mất kết nối server: " + ex.Message);
-                    SocketManager.Instance.ResetConnection();
-                    isRunning = false;
-                    listenThread?.Interrupt();
-                    listenThread = null;
-                    Destroy(gameObject);
-                    SceneManager.LoadScene("Login");
+                    Debug.LogWarning($"[{DateTime.Now:HH:mm:ss.fff}] Mất kết nối server: {ex.Message}");
+                    if (boxAlertUI != null)
+                    {
+                        SocketManager.Instance.ResetConnection();
+                        listenThread?.Interrupt();
+                        listenThread = null;
+                        boxAlertUI.Band("Máy chủ hiện đang bảo trì");
+                    }
+                    else
+                        Debug.LogWarning($"[{DateTime.Now:HH:mm:ss.fff}] ⚠️ boxAlertUI chưa được gán trong Main");
                 });
             }
             else
             {
-                // Nếu là ban, chỉ tắt thread nhẹ nhàng
                 isRunning = false;
                 listenThread?.Interrupt();
                 listenThread = null;
             }
         }
     }
+
+
+
+    public void logout()
+    {
+        SocketManager.Instance.ResetConnection();
+        isRunning = false;
+        listenThread?.Interrupt();
+        listenThread = null;
+        Destroy(gameObject);
+        SceneManager.LoadScene("Login");
+    }
     private void HandleCommand(sbyte cmd, byte[] data)
     {
-        switch (cmd)
+        try
         {
-            case CMD_REQUEST_PLAYER:
-                EnqueueMainThread(() => playerHandler.HandleSpawnPlayer(data));
-                break;
+            switch (cmd)
+            {
+                case CMD_REQUEST_PLAYER:
+                    SafeInvoke("HandleSpawnPlayer", () => playerHandler.HandleSpawnPlayer(data));
+                    break;
 
-            case CMD_MOVE_ALL:
-                EnqueueMainThread(() => playerHandler.HandleMoveAll(data));
-                break;
+                case CMD_MOVE_ALL:
+                    SafeInvoke("HandleMoveAll", () => playerHandler.HandleMoveAll(data));
+                    break;
 
-            case CMD_MOVE:
-                EnqueueMainThread(() => playerHandler.HandleMove(data));
-                break;
+                case CMD_MOVE:
+                    SafeInvoke("HandleMove", () => playerHandler.HandleMove(data));
+                    break;
 
-            case CMD_DISCONNECT:
-                EnqueueMainThread(() => playerHandler.HandleDisconnect(data));
-                break;
+                case CMD_DISCONNECT:
+                    SafeInvoke("HandleDisconnect", () => playerHandler.HandleDisconnect(data));
+                    break;
 
-            case CMD_BAND:
-                isBanned = true;
-                isRunning = false;
-                EnqueueMainThread(() =>
-                {
-                    if (boxAlertUI != null)
+                case CMD_BAND:
+                    isBanned = true;
+                    isRunning = false;
+                    EnqueueMainThread(() =>
                     {
-                        SocketManager.Instance.ResetConnection();
-                        listenThread?.Interrupt();
-                        listenThread = null;
-                        boxAlertUI.Band("Tài khoản được đăng nhập ở nơi khác");
-                    }
-                    else Debug.LogWarning("⚠️ boxAlertUI chưa được gán trong Main");
-                });
-                break;
-
-            case CMD_GETBAG:
-                EnqueueMainThread(() => bagUI?.HandleBagData(data));
-                break;
-
-            case CMD_ITEM_EQUIP:
-                EnqueueMainThread(() => charUI?.HandleEquipData(data));
-                break;
-
-            case CMD_SEND_ALERT:
-                EnqueueMainThread(() =>
-                {
-                    if (boxAlertUI != null)
-                    {
-                        using (MemoryStream ms = new MemoryStream(data))
-                        using (BinaryReader reader = new BinaryReader(ms))
+                        try
                         {
-                            int count = ReadInt32BigEndian(reader);
-                            if (count == 1)
+                            if (boxAlertUI != null)
                             {
-                                int len = ReadInt32BigEndian(reader);
-                                byte[] msgBytes = reader.ReadBytes(len);
-                                string message = Encoding.UTF8.GetString(msgBytes);
-                                boxAlertUI.ShowAlert(message);
+                                SocketManager.Instance.ResetConnection();
+                                listenThread?.Interrupt();
+                                listenThread = null;
+                                boxAlertUI.Band("Tài khoản được đăng nhập ở nơi khác");
                             }
-                            else noteAddItem.handleAlert(data);
+                            else
+                                Debug.LogWarning("⚠️ boxAlertUI chưa được gán trong Main");
                         }
-                    }
-                });
-                break;
+                        catch (Exception ex)
+                        {
+                            FreezeGame($"❌ Lỗi trong CMD_BAND: {ex.Message}", ex);
+                        }
+                    });
+                    break;
 
-            case CMD_PLAYER_STATS:
-                EnqueueMainThread(() => optionPlayer?.UpdateLines(data));
-                break;
+                case CMD_GETBAG:
+                    SafeInvoke("HandleBagData", () => bagUI?.HandleBagData(data));
+                    break;
 
-            case CMD_SEND_NPC:
-                EnqueueMainThread(() => menuManager?.HandleMenu(data));
-                break;
+                case CMD_ITEM_EQUIP:
+                    SafeInvoke("HandleEquipData", () => charUI?.HandleEquipData(data));
+                    break;
 
-            case CMD_REQUEST_NPC:
-                EnqueueMainThread(() => playerHandler.HandleNpcList(data));
-                break;
+                case CMD_SEND_ALERT:
+                    EnqueueMainThread(() =>
+                    {
+                        try
+                        {
+                            if (boxAlertUI != null)
+                            {
+                                using (MemoryStream ms = new MemoryStream(data))
+                                using (BinaryReader reader = new BinaryReader(ms))
+                                {
+                                    int count = ReadInt32BigEndian(reader);
+                                    if (count == 1)
+                                    {
+                                        int len = ReadInt32BigEndian(reader);
+                                        byte[] msgBytes = reader.ReadBytes(len);
+                                        string message = Encoding.UTF8.GetString(msgBytes);
+                                        boxAlertUI.ShowAlert(message);
+                                    }
+                                    else noteAddItem.handleAlert(data);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            FreezeGame($"❌ Lỗi trong CMD_SEND_ALERT: {ex.Message}", ex);
+                        }
+                    });
+                    break;
 
-            case CMD_SEND_UI:
-                EnqueueMainThread(() => UI_manager.HandleUI(data));
-                break;
+                case CMD_PLAYER_STATS:
+                    SafeInvoke("UpdateLines", () => optionPlayer?.UpdateLines(data));
+                    break;
 
-            case CMD_SEND_MOBS:
-                EnqueueMainThread(() => MobsManager.handleSpawmMobs(data));
-                break;
+                case CMD_SEND_NPC:
+                    SafeInvoke("HandleMenu", () => menuManager?.HandleMenu(data));
+                    break;
 
-            case CMD_SEND_QUANTITY_MOB:
-                EnqueueMainThread(() => playerUI.HandleMobData(data));
-                break;
+                case CMD_REQUEST_NPC:
+                    SafeInvoke("HandleNpcList", () => playerHandler.HandleNpcList(data));
+                    break;
 
-            case CMD_SHOP:
-                EnqueueMainThread(() => shopUI?.HandleBagData(data));
-                break;
+                case CMD_SEND_UI:
+                    SafeInvoke("HandleUI", () => UI_manager.HandleUI(data));
+                    break;
 
-            case CMD_INFOR_UPGRADE:
-                EnqueueMainThread(() => upgradeUI?.HandleAddUpgrade(data));
-                break;
+                case CMD_SEND_MOBS:
+                    SafeInvoke("handleSpawmMobs", () => MobsManager.handleSpawmMobs(data));
+                    break;
 
-            case CMD_SEND_ATTACK:
-                EnqueueMainThread(() => playerHandler.HandleAttack(data));
-                break;
+                case CMD_SEND_QUANTITY_MOB:
+                    SafeInvoke("HandleMobData", () => playerUI.HandleMobData(data));
+                    break;
 
-            case CMD_ALL_SKILL:
-                EnqueueMainThread(() => skillUI.HandleSkillData(data));
-                break;
+                case CMD_SHOP:
+                    SafeInvoke("HandleBagData (shop)", () => shopUI?.HandleBagData(data));
+                    break;
 
-            case CMD_SKILL:
-                EnqueueMainThread(() => skillUI.HandleSkillEquip(data));
-                break;
+                case CMD_INFOR_UPGRADE:
+                    SafeInvoke("HandleAddUpgrade", () => upgradeUI?.HandleAddUpgrade(data));
+                    break;
 
-            case CMD_SKILL_COUNTDOWN:
-                EnqueueMainThread(() => skill.handleSkill(data));
-                break;
+                case CMD_SEND_ATTACK:
+                    SafeInvoke("HandleAttack", () => playerHandler.HandleAttack(data));
+                    break;
 
-            default:
-                Debug.Log($"📥 Nhận command khác: 0x{cmd:X2} ({data.Length} bytes)");
-                break;
+                case CMD_ALL_SKILL:
+                    SafeInvoke("HandleSkillData", () => skillUI.HandleSkillData(data));
+                    break;
+
+                case CMD_SKILL:
+                    SafeInvoke("HandleSkillEquip", () => skillUI.HandleSkillEquip(data));
+                    break;
+
+                case CMD_SKILL_COUNTDOWN:
+                    SafeInvoke("handleSkill", () => skill.handleSkill(data));
+                    break;
+
+                default:
+                    Debug.Log($"📥 Nhận command khác: 0x{cmd:X2} ({data.Length} bytes)");
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            FreezeGame($"🔥 Lỗi tổng thể trong HandleCommand (cmd=0x{cmd:X2})", ex);
         }
     }
+
 
     private int ReadInt32BigEndian(BinaryReader reader)
     {
@@ -315,5 +383,43 @@ public class Main : MonoBehaviour
         Destroy(gameObject);
         SceneManager.LoadScene("Login");
     }
+    private void SafeInvoke(string name, Action action)
+    {
+        try
+        {
+            EnqueueMainThread(() =>
+            {
+                try
+                {
+                    action?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    FreezeGame($"❌ Lỗi trong {name}: {ex.Message}", ex);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            FreezeGame($"❌ Lỗi khi EnqueueMainThread({name}): {ex.Message}", ex);
+        }
+    }
+
+    private void FreezeGame(string message, Exception ex)
+    {
+        Debug.LogError($"{message}\n{ex}");
+        Time.timeScale = 0f; // ⏸ Dừng toàn bộ game
+        isRunning = false;
+
+        // Nếu có UI cảnh báo, hiển thị lên
+        if (boxAlertUI != null)
+        {
+            boxAlertUI.ShowAlert(message + "\n\n" + ex.Message);
+        }
+
+        // Nếu cần dừng cả thread lắng nghe
+        listenThread?.Interrupt();
+    }
+
 
 }

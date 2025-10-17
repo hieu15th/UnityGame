@@ -72,13 +72,5 @@ public class UISetting : MonoBehaviour
         text.text = isMuted ? "Âm lượng: Tắt" : "Âm lượng: Bật";
     }
 
-    public void logout()
-    {
-        if (SocketManager.Instance != null && SocketManager.Instance.IsConnected())
-        {
-            SocketManager.Instance.Close();
-        }
 
-        SceneManager.LoadScene("Login");
-    }
 }

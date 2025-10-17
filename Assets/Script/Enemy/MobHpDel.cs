@@ -9,7 +9,7 @@ public class MobHpDel : MonoBehaviour
     [SerializeField] private Vector3 textPositionOffset; // Vị trí lệch của chữ so với m_gameObject
     private GameObject currentText;
     private float moveDuration = 1f; // Thời gian di chuyển lên (1 giây)
-    public TMP_SpriteAsset hp;
+    public TMP_SpriteAsset dame;
     // Coroutine để di chuyển chữ lên trên trong 1 giây
     private IEnumerator MoveTextUp()
     {
@@ -46,16 +46,29 @@ public class MobHpDel : MonoBehaviour
 
 
 
-    public void UpdateHpText(string text)
+    public void UpdateHpText(string text, int type)
     {
         if (currentText != null)
         {
-            // Cập nhật nội dung chữ (TextMeshPro)
-            TextMeshPro tmpText = currentText.GetComponent<TextMeshPro>(); // Nếu dùng TextMeshPro
+            TextMeshPro tmpText = currentText.GetComponent<TextMeshPro>();
             if (tmpText != null)
             {
-                tmpText.spriteAsset = hp;
-                tmpText.text = "- <size=70%><sprite=0></size>    " + text; 
+                tmpText.spriteAsset = dame;
+
+                // Xác định màu dựa vào type
+                Color color = Color.white;
+                if (type == 1)
+                    color = Color.red;
+                else if (type == 2)
+                    color = Color.green;
+                // ... thêm các loại khác nếu cần
+
+                string colorHex = ColorUtility.ToHtmlStringRGB(color);
+                tmpText.fontSize = 20;
+                tmpText.fontStyle = FontStyles.Bold | FontStyles.Italic;
+                // Dấu '-' luôn trắng, còn phần sau đổi màu
+                tmpText.text =
+                    $"<color=#FFFFFF>-</color> <color=#{colorHex}><size=70%><sprite=0></size>    {text}</color>";
             }
         }
     }
@@ -69,14 +82,14 @@ public class MobHpDel : MonoBehaviour
             if (textPrefab != null && m_gameObject != null)
             {
                 // Gọi coroutine để delay 0.5s trước khi tạo text
-                StartCoroutine(SpawnHpTextWithDelay(mob.hp_del));
+                StartCoroutine(SpawnHpTextWithDelay(mob.hp_del, mob.type));
             }
-
+            mob.type = -1;
             mob.hp_del = 0;  // Reset hp_del sau khi đã sử dụng
         }
     }
 
-    private IEnumerator SpawnHpTextWithDelay(int damage)
+    private IEnumerator SpawnHpTextWithDelay(int damage, int type)
     {
         // ⏳ Chờ 0.5 giây
         yield return new WaitForSeconds(0.5f);
@@ -105,7 +118,7 @@ public class MobHpDel : MonoBehaviour
             if (renderer != null)
                 renderer.sortingOrder = 10;
         }
-        UpdateHpText(damage.ToString());
+        UpdateHpText(damage.ToString(), type);
 
         // Tính toán tốc độ di chuyển (di chuyển lên trong 1 giây)
         StartCoroutine(MoveTextUp());

@@ -422,6 +422,7 @@ MonoBehaviour:
   dame: 0
   part: 0
   hp_del: 0
+  type: 0
   attack: 0
 --- !u!210 &2916771146760929953
 SortingGroup:
@@ -487,7 +488,7 @@ MonoBehaviour:
   textPrefab: {fileID: 7850008110181418138, guid: cc9df819ce3834848b1c16be417e5d02,
     type: 3}
   textPositionOffset: {x: 0, y: 0.1, z: 0}
-  hp: {fileID: 11400000, guid: 1ed68d366aba639488520263298e545b, type: 2}
+  dame: {fileID: 11400000, guid: 1ed68d366aba639488520263298e545b, type: 2}
 --- !u!114 &3918769185313666031
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -943,7 +944,7 @@ Transform:
   m_GameObject: {fileID: 5974980740447313225}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.643, z: 0}
+  m_LocalPosition: {x: 0, y: -0.5, z: 0}
   m_LocalScale: {x: 1.4999998, y: 1.4999998, z: 0.7499999}
   m_ConstrainProportionsScale: 1
   m_Children: []

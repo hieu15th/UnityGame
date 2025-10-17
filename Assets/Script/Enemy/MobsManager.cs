@@ -102,7 +102,8 @@ public class MobsManager : MonoBehaviour
                 offset += 4;
                 int hp_del = BitConverter.ToInt32(data, offset);
                 offset += 4;
-
+                int type = BitConverter.ToInt32(data, offset);
+                offset += 4;
                 // Cập nhật thông tin mob nếu có
                 if (mobInstances.ContainsKey(id))
                 {
@@ -112,6 +113,7 @@ public class MobsManager : MonoBehaviour
                     if (mobData != null)
                     {
                         mobData.hp_del = hp_del;
+                        mobData.type = type;
                     }
                 }
                 break;

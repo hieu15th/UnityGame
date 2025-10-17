@@ -130,7 +130,6 @@ public class PlayerController : MonoBehaviour
             // 🔹 Kiểm tra parameter tồn tại
             if (anim.parameters.Any(p => p.name == "2_Attack" && p.type == AnimatorControllerParameterType.Trigger))
             {
-                anim.SetTrigger("2_Attack");
 
                 // Nếu là người chơi hiện tại thì xử lý UI skill
                 if (attacker == currentPlayer)
@@ -143,11 +142,14 @@ public class PlayerController : MonoBehaviour
                         var s = firstUISkill.GetComponent<Skill>();
                         if (s != null)
                         {
+                            anim.SetTrigger("2_Attack");
+
                             int idx = s.selectedSkillIndex;
 
                             // ✅ Kiểm tra an toàn trước khi truy cập mảng
                             if (idx >= 0 && idx < skills.Length && skills[idx] != null)
                             {
+                                //anim.SetTrigger("7_Skill");
                                 skills[idx].StartCountdown();
                             }
                         }
@@ -170,53 +172,80 @@ public class PlayerController : MonoBehaviour
 
     public void HandleNpcList(byte[] data)
     {
-        if (data.Length < 2)
+        if (data.Length < 4)
         {
-            Debug.LogError("❌ Payload quá ngắn.");
+            Debug.LogError("❌ Payload quá ngắn (thiếu số lượng NPC).");
             return;
         }
 
-        int npcCount = BitConverter.ToInt32(data, 0); // ✔️ đúng vì Java ghi 4 byte
-        int offset = 4; // ✔️ tăng offset lên 4
+        // Đọc int big-endian (Java mặc định writeInt là big-endian)
+        int npcCount = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
+        int offset = 4;
 
+        Debug.Log($"📦 NPC Count: {npcCount}");
         List<Npc> npcList = new List<Npc>();
 
         for (int i = 0; i < npcCount; i++)
         {
-            if (offset >= data.Length) break;
-
-            byte nameLen = data[offset]; offset++;
-            if (offset + nameLen + 56 > data.Length)
+            if (offset >= data.Length)
             {
-                Debug.LogError($"❌ Không đủ dữ liệu cho NPC thứ {i}.");
+                Debug.LogError($"❌ Thiếu dữ liệu cho NPC thứ {i} (offset={offset}, length={data.Length})");
                 break;
             }
 
-            string name = Encoding.UTF8.GetString(data, offset, nameLen); offset += nameLen;
+            byte nameLen = data[offset++];
+            if (offset + nameLen + 52 > data.Length)
+            {
+                Debug.LogError($"❌ Không đủ dữ liệu cho NPC thứ {i} (nameLen={nameLen}, offset={offset}, dataLen={data.Length})");
+                break;
+            }
 
-            int id = BitConverter.ToInt32(data, offset); offset += 4;
-            float x = BitConverter.ToSingle(data, offset); offset += 4;
-            float y = BitConverter.ToSingle(data, offset); offset += 4;
+            string name = Encoding.UTF8.GetString(data, offset, nameLen);
+            offset += nameLen;
 
-            int head = BitConverter.ToInt32(data, offset); offset += 4;
-            int facehair = BitConverter.ToInt32(data, offset); offset += 4;
-            int helmet = BitConverter.ToInt32(data, offset); offset += 4;
-            int hair = BitConverter.ToInt32(data, offset); offset += 4;
-            int body = BitConverter.ToInt32(data, offset); offset += 4;
-            int armor = BitConverter.ToInt32(data, offset); offset += 4;
-            int leg = BitConverter.ToInt32(data, offset); offset += 4;
-            int boot = BitConverter.ToInt32(data, offset); offset += 4;
-            int hand = BitConverter.ToInt32(data, offset); offset += 4;
-            int cloak = BitConverter.ToInt32(data, offset); offset += 4;
-            int weapon = BitConverter.ToInt32(data, offset); offset += 4;
+            // Các int còn lại server ghi little-endian -> cần đảo byte
+            int id = ReadInt32LE(data, ref offset);
+            float x = ReadFloatLE(data, ref offset);
+            float y = ReadFloatLE(data, ref offset);
+            int head = ReadInt32LE(data, ref offset);
+            int facehair = ReadInt32LE(data, ref offset);
+            int helmet = ReadInt32LE(data, ref offset);
+            int hair = ReadInt32LE(data, ref offset);
+            int body = ReadInt32LE(data, ref offset);
+            int armor = ReadInt32LE(data, ref offset);
+            int leg = ReadInt32LE(data, ref offset);
+            int boot = ReadInt32LE(data, ref offset);
+            int hand = ReadInt32LE(data, ref offset);
+            int cloak = ReadInt32LE(data, ref offset);
+            int weapon = ReadInt32LE(data, ref offset);
 
+            // ⚙️ Khởi tạo NPC model theo thứ tự constructor của bạn
             Npc npc = new Npc(id, name, x, y,
-                head, facehair, helmet, hair, body, armor, hand, leg, boot, weapon, cloak);
+                head, facehair, helmet, hair, body, armor,
+                hand, leg, boot, weapon, cloak);
 
             npcList.Add(npc);
         }
+
+        Debug.Log($"✅ Nhận {npcList.Count}/{npcCount} NPCs hợp lệ");
         NpcManager.Instance.SpawnNpcs(npcList);
     }
+
+    private int ReadInt32LE(byte[] data, ref int offset)
+    {
+        int value = BitConverter.ToInt32(data, offset);
+        offset += 4;
+        return value;
+    }
+
+    private float ReadFloatLE(byte[] data, ref int offset)
+    {
+        float value = BitConverter.ToSingle(data, offset);
+        offset += 4;
+        return value;
+    }
+
+
 
 
 
@@ -266,12 +295,12 @@ public class PlayerController : MonoBehaviour
             int cloak = BitConverter.ToInt32(data, offset); offset += 4;
 
             // 🧩 Log debug chi tiết
-            Debug.Log(
-                $"[SpawnPlayer] ✅ {username}\n" +
-                $"Type: {type}, Pos: ({x:F2}, {y:F2})\n" +
-                $"HP: {currentHP}/{maxHP}, Gold: {gold}, Diamond: {diamond}\n" +
-                $"Equip: head={head}, facehair={facehair}, helmet={helmet}, hair={hair}, body={body}, armor={armor}, hand={hand}, leg={leg}, boot={boot}, weapon={weapon}, cloak={cloak}"
-            );
+            //Debug.Log(
+            //    $"[SpawnPlayer] ✅ {username}\n" +
+            //    $"Type: {type}, Pos: ({x:F2}, {y:F2})\n" +
+            //    $"HP: {currentHP}/{maxHP}, Gold: {gold}, Diamond: {diamond}\n" +
+            //    $"Equip: head={head}, facehair={facehair}, helmet={helmet}, hair={hair}, body={body}, armor={armor}, hand={hand}, leg={leg}, boot={boot}, weapon={weapon}, cloak={cloak}"
+            //);
 
             // Cập nhật thông tin người chơi
             SocketManager.Instance.Username = username;

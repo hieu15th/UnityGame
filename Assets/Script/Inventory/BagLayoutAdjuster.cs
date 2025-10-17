@@ -40,7 +40,7 @@ public class BagLayoutAdjuster : MonoBehaviour, ISlotSelectable
         {
             SetObjectActiveWithText("", btn_left);
         }
-        if(selectedSlotIndex <= 0)
+        if(selectedSlotIndex < 0)
         {
             SetObjectActiveWithText("", btn_left);
             SetObjectActiveWithText("", btn_right);
@@ -157,15 +157,57 @@ public class BagLayoutAdjuster : MonoBehaviour, ISlotSelectable
     void AdjustSlotSize()
     {
         float totalWidth = bagPanel.rect.width;
-        float totalSpacing = (columnCount - 1) * spacing;
-        float slotWidth = (totalWidth - totalSpacing - 10f) / columnCount;
 
+        int spacing = 0;        // <- đổi sang 1 nếu bạn muốn spacing =1
+        int paddingBase = 2;
+        int cols = Mathf.Max(1, columnCount);
+
+        // Vùng khả dụng để chia ô (không trừ paddingBase ở đây để tính slotWidth đúng)
+        float availableWidth = totalWidth - paddingBase * 2 - (cols - 1) * spacing;
+        if (availableWidth < cols) availableWidth = cols; // phòng trường hợp quá nhỏ
+
+        // Tính slotWidth (số nguyên pixel)
+        float slotWidth = Mathf.Floor(availableWidth / cols);
+        // nếu panel lớn hơn, cho phép slot mở rộng (vẫn làm tròn)
+        if (availableWidth / cols > 33f)
+            slotWidth = Mathf.Floor(availableWidth / cols);
+        // bảo đảm slotWidth >= 1
+        slotWidth = Mathf.Max(1f, slotWidth);
+
+        // Tổng chiều rộng thực tế dùng bởi ô + spacing
+        float usedInnerWidth = slotWidth * cols + spacing * (cols - 1);
+        // Tổng chiều dùng bao gồm padding 2 bên
+        float totalUsedWidth = usedInnerWidth + paddingBase * 2;
+
+        // Phần dư thực sự (dùng để căn giữa)
+        float remaining = Mathf.Max(totalWidth - totalUsedWidth, 0f);
+
+        // Chia đều phần dư 2 bên (lưu ý làm tròn trái/phải sao cho tổng vẫn = remaining)
+        int paddingLeftExtra = Mathf.FloorToInt(remaining / 2f);
+        int paddingRightExtra = Mathf.RoundToInt(remaining - paddingLeftExtra);
+
+        int finalLeft = paddingBase + paddingLeftExtra;
+        int finalRight = paddingBase + paddingRightExtra;
+
+        // Debug để bạn kiểm tra
+        Debug.Log($"AdjustSlotSize: totalWidth={totalWidth} availableWidth={availableWidth} slotWidth={slotWidth} usedInnerWidth={usedInnerWidth} totalUsedWidth={totalUsedWidth} remaining={remaining} paddingL={finalLeft} paddingR={finalRight}");
+
+        // Áp dụng GridLayoutGroup
         gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        gridLayout.constraintCount = columnCount;
+        gridLayout.constraintCount = cols;
         gridLayout.cellSize = new Vector2(slotWidth, slotWidth);
         gridLayout.spacing = new Vector2(spacing, spacing);
-        gridLayout.padding = new RectOffset(5, 5, 5, 5);
+        gridLayout.padding = new RectOffset(
+            finalLeft,
+            finalRight,
+            finalLeft,   // top = left
+            finalLeft    // bottom = left
+        );
     }
+
+
+
+
 
 
     public void HandleBagData(byte[] data)
@@ -313,10 +355,10 @@ public class BagLayoutAdjuster : MonoBehaviour, ISlotSelectable
                         switch (item.color)
                         {
                             //case 0: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_6"); break;
-                            case 1: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_9"); break;
-                            case 2: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_13"); break;
-                            case 3: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_5"); break;
-                            default: slotImage.sprite = GetSpriteFromSheet("Items", "UI 1_6"); break;
+                            case 1: slotImage.sprite = GetSpriteFromSheet("Items", "Slot_3"); break;
+                            case 2: slotImage.sprite = GetSpriteFromSheet("Items", "Slot_4"); break;
+                            case 3: slotImage.sprite = GetSpriteFromSheet("Items", "Slot_5"); break;
+                            default: slotImage.sprite = GetSpriteFromSheet("Items", "Slot_2"); break;
                         }
 
                         if (icon != null) icon.sprite = GetSpriteFromId(item.img);
@@ -325,7 +367,7 @@ public class BagLayoutAdjuster : MonoBehaviour, ISlotSelectable
                     }
                     else if (i < bagSize)
                     {
-                        if (icon != null) icon.sprite = GetSpriteFromSheet("Items", "UI 1_6");
+                        if (icon != null) icon.sprite = GetSpriteFromSheet("Items", "Slot_2");
                         if (quantityText != null) quantityText.text = "";
                     }
                     else
@@ -483,8 +525,8 @@ public class BagLayoutAdjuster : MonoBehaviour, ISlotSelectable
                 if (img != null)
                 {
                     img.sprite = (i == selectedSlotIndex && choose)
-                        ? GetSpriteFromSheet("Items", "UI 1_1")
-                        : GetSpriteFromSheet("Items", "UI 1_0");
+                        ? GetSpriteFromSheet("Items", "Slot_1")
+                        : GetSpriteFromSheet("Items", "Slot_0");
                 }
             }
         }
