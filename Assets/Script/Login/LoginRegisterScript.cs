@@ -171,7 +171,7 @@ public class LoginRegisterScript : MonoBehaviour
     {
         try
         {
-            string serverIp = "127.0.0.1";
+            string serverIp = "160.191.48.192";
             int serverPort = 14444;
 
             if (SocketManager.Instance == null)

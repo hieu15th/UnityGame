@@ -22,6 +22,7 @@ public class PlayerController : MonoBehaviour
     private Dictionary<string, Vector3> previousPositions = new Dictionary<string, Vector3>();
     private Dictionary<string, float> lastMoveTimes = new Dictionary<string, float>();
     private Dictionary<string, Vector3> targetPositions = new Dictionary<string, Vector3>();
+    public CHATWORLD chatw;
     private void Start()
     {
         audio = GetComponents<AudioSource>();
@@ -130,6 +131,7 @@ public class PlayerController : MonoBehaviour
             // 🔹 Kiểm tra parameter tồn tại
             if (anim.parameters.Any(p => p.name == "2_Attack" && p.type == AnimatorControllerParameterType.Trigger))
             {
+                anim.SetTrigger("2_Attack");
 
                 // Nếu là người chơi hiện tại thì xử lý UI skill
                 if (attacker == currentPlayer)
@@ -142,7 +144,6 @@ public class PlayerController : MonoBehaviour
                         var s = firstUISkill.GetComponent<Skill>();
                         if (s != null)
                         {
-                            anim.SetTrigger("2_Attack");
 
                             int idx = s.selectedSkillIndex;
 
@@ -182,7 +183,6 @@ public class PlayerController : MonoBehaviour
         int npcCount = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
         int offset = 4;
 
-        Debug.Log($"📦 NPC Count: {npcCount}");
         List<Npc> npcList = new List<Npc>();
 
         for (int i = 0; i < npcCount; i++)
@@ -227,7 +227,6 @@ public class PlayerController : MonoBehaviour
             npcList.Add(npc);
         }
 
-        Debug.Log($"✅ Nhận {npcList.Count}/{npcCount} NPCs hợp lệ");
         NpcManager.Instance.SpawnNpcs(npcList);
     }
 
@@ -248,6 +247,73 @@ public class PlayerController : MonoBehaviour
 
 
 
+
+    public void HandleChat(byte[] data)
+    {
+        try
+        {
+            using (MemoryStream ms = new MemoryStream(data))
+            using (BinaryReader reader = new BinaryReader(ms, Encoding.UTF8))
+            {
+                byte type = reader.ReadByte(); // 1 byte
+
+                int nameLen = reader.ReadByte(); // 1 byte
+                string name = Encoding.UTF8.GetString(reader.ReadBytes(nameLen)); // tên người gửi
+
+                // Đọc độ dài tin nhắn (2 byte Big Endian)
+                byte[] msgLenBytes = reader.ReadBytes(2);
+                if (msgLenBytes.Length < 2)
+                {
+                    Debug.LogWarning("⚠️ Dữ liệu chat không đủ 2 byte cho độ dài message.");
+                    return;
+                }
+                int msgLen = (msgLenBytes[0] << 8) | msgLenBytes[1];
+
+                // Đọc nội dung message
+                string msg = Encoding.UTF8.GetString(reader.ReadBytes(msgLen));
+
+                switch (type)
+                {
+                    case 0: // chat thường
+                        ShowChatMessage(name,msg);
+                        break;
+                    case 1: // chat người chơi
+                        chatw.HandleChatWork(name +": "+ msg);
+                        break;
+                    default:
+                        Debug.LogWarning($"⚠️ Loại chat chưa xử lý: {type}");
+                        break;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"❌ Lỗi HandleChat: {ex.Message}");
+        }
+    }
+
+
+    private void ShowChatMessage(string name, string msg)
+    {
+        GameObject target = null;
+
+        // 🔍 Duyệt tất cả GameObject trong scene
+        foreach (var obj in FindObjectsOfType<GameObject>())
+        {
+            if (obj.name == name)
+            {
+                target = obj;
+                target.GetComponent<DisplayChat>().mess = msg;
+                break; // ✅ Dừng ngay khi tìm thấy
+            }
+        }
+
+        if (target == null)
+        {
+            Debug.LogWarning($"⚠️ Không tìm thấy GameObject có tên: {name}");
+            return;
+        }
+    }
 
 
     public void HandleSpawnPlayer(byte[] data)
@@ -491,7 +557,7 @@ public class PlayerController : MonoBehaviour
             player.AddComponent<PlayerMovement>();
             cammera.SetTarget(player.transform);
         }
-
+        player.name = username;
         // 🧠 Cập nhật thông tin stats
         Player stats = player.GetComponent<Player>() ?? player.AddComponent<Player>();
         stats.hp_max = maxHP;
@@ -534,7 +600,6 @@ public class PlayerController : MonoBehaviour
         Vector3 spawnPos = new Vector3(x, y, 0);
 
         GameObject player;
-
         // Nếu player đã tồn tại → cập nhật vị trí mới
         if (otherPlayers.TryGetValue(name, out GameObject existing))
         {
@@ -554,6 +619,7 @@ public class PlayerController : MonoBehaviour
             otherPlayers[name] = player;
             previousPositions[name] = spawnPos;
         }
+        player.name = name;
 
         // Health bar
         var healthTransform = player.transform.Find("HealthBar")?.Find("Health")?.GetComponent<Transform>()

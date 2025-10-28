@@ -6,7 +6,6 @@ public class Player : MonoBehaviour
     private int _hpMax;
     private int _gold;
     private int _diamond;
-
     public int hp_now
     {
         get => _hpNow;

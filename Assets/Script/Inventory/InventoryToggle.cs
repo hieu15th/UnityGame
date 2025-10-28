@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -10,7 +11,7 @@ public class InventoryToggle : MonoBehaviour
 
     public GameObject bgr;
     public GameObject Bag, Char, Upgrade, Shop, Skill;
-    public GameObject select;
+    public GameObject select,chat;
     public GameObject ScrollView;
     public Button leftButton;
     public Button rightButton;
@@ -27,7 +28,7 @@ public class InventoryToggle : MonoBehaviour
     {
         if (mess == null)
         {
-            mess = Object.FindFirstObjectByType<MessageManager>();
+            mess = FindFirstObjectByType<MessageManager>();
             if (mess == null)
             {
                 Debug.LogError("❌ Không tìm thấy MessageManager trong scene.");
@@ -42,18 +43,18 @@ public class InventoryToggle : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.I))
-        {
-            if (!isOpen)
-            {
-                Load(0, 1, 4); // ví dụ mặc định mở Bag + Char
-                ShowUIOnly();
-            }
-            else
-            {
-                CloseInventory();
-            }
-        }
+        //if (Input.GetKeyDown(KeyCode.I))
+        //{
+        //    if (!isOpen)
+        //    {
+        //        Load(0, 1, 4); // ví dụ mặc định mở Bag + Char
+        //        ShowUIOnly();
+        //    }
+        //    else
+        //    {
+        //        CloseInventory();
+        //    }
+        //}
     }
 
     // 👉 Hàm Load mới: cho phép truyền nhiều tab
@@ -80,7 +81,7 @@ public class InventoryToggle : MonoBehaviour
         bgr.SetActive(true);
         openButton.gameObject.SetActive(false);
         select.SetActive(false);
-
+        chat.SetActive(false);
         UpdateTab();
     }
 
@@ -99,6 +100,7 @@ public class InventoryToggle : MonoBehaviour
         ScrollView.SetActive(false);
         openButton.gameObject.SetActive(true);
         select.SetActive(true);
+        chat.SetActive(true);
     }
 
     private void SwitchTab(int direction)

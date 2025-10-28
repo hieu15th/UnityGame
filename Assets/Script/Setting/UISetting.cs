@@ -9,7 +9,7 @@ public class UISetting : MonoBehaviour
     public GameObject[] UI;
     public GameObject volume;
     public GameObject panel;
-
+    public GameObject chat;
     void Start()
     {
         UpdateVolumeUI();
@@ -64,7 +64,12 @@ public class UISetting : MonoBehaviour
         AudioManager.Instance.ToggleMute();
         UpdateVolumeUI();
     }
-
+    public void opChatW()
+    {
+        chat.GetComponent<CHAT>().type = 1;
+        chat.SetActive(true);
+        gameObject.SetActive(false);
+    }
     private void UpdateVolumeUI()
     {
         bool isMuted = AudioManager.Instance.isMuted;

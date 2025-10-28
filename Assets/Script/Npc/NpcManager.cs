@@ -55,12 +55,15 @@ public class NpcManager : MonoBehaviour
 
             GameObject go = Instantiate(npcPrefab, new Vector3(npc.x, npc.y, 0), Quaternion.identity);
 
+            // 👉 Đặt tên GameObject theo tên NPC
+            go.name = npc.name;
+
             // 👉 Lật NPC theo hướng ngẫu nhiên
             Vector3 npcScale = go.transform.localScale;
             npcScale.x *= direction;
             go.transform.localScale = npcScale;
 
-            // 👉 Gán tên và lật tên theo cùng hướng
+            // 👉 Gán tên hiển thị phía trên đầu NPC
             Transform nameTransform = go.transform.Find("Name");
             if (nameTransform != null)
             {
@@ -71,9 +74,20 @@ public class NpcManager : MonoBehaviour
                 TextMeshPro nameText = nameTransform.GetComponent<TextMeshPro>();
                 if (nameText != null)
                 {
-                    nameText.text = $"<b><color=#00FF00><size=22>{npc.name}</size></color></b>";
+                    // 👉 Viết hoa chữ cái đầu tiên
+                    string displayName = npc.name;
+                    if (!string.IsNullOrEmpty(displayName))
+                    {
+                        displayName = char.ToUpper(displayName[0]) + displayName.Substring(1);
+                    }
+
+                    nameText.fontStyle = FontStyles.Bold;
+                    nameText.text = $"<b><color=#00FF00><size=22>{displayName}</size></color></b>";
                 }
             }
+
+
+            // Xóa vùng tấn công nếu có
             ZoneAttack attack = go.GetComponentInChildren<ZoneAttack>();
             if (attack != null)
             {
@@ -119,10 +133,10 @@ public class NpcManager : MonoBehaviour
             {
                 GameObject.Destroy(npc);
                 npcMap.Remove(id);
-                //Debug.Log($"🗑️ Đã xoá NPC ID {id} vì không còn trong danh sách server gửi về.");
             }
         }
     }
+
 
 
 

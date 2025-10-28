@@ -8,6 +8,7 @@ using System.Threading;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 
 public class Main : MonoBehaviour
@@ -36,6 +37,7 @@ public class Main : MonoBehaviour
     private const sbyte CMD_ALL_SKILL = -107;
     private const sbyte CMD_SKILL = -106;
     private const sbyte CMD_SKILL_COUNTDOWN = -105;
+    private const sbyte CMD_CHAT = -104;
 
     private readonly ConcurrentQueue<Action> mainThreadActions = new ConcurrentQueue<Action>();
     [SerializeField] private PlayerController playerHandler;
@@ -130,19 +132,19 @@ public class Main : MonoBehaviour
                 int bytesRead = reader.BaseStream.Read(recvBuffer, 0, recvBuffer.Length);
                 if (bytesRead <= 0)
                 {
-                    Debug.LogWarning($"[{DateTime.Now:HH:mm:ss.fff}] ⚠️ Server ngắt kết nối hoặc socket bị đóng.");
+                    //Debug.LogWarning($"[{DateTime.Now:HH:mm:ss.fff}] ⚠️ Server ngắt kết nối hoặc socket bị đóng.");
                     break;
                 }
 
                 buffer.Write(recvBuffer, 0, bytesRead);
-                Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}] 📩 Nhận {bytesRead} bytes, tổng buffer hiện tại = {buffer.Length}");
+                //Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}] 📩 Nhận {bytesRead} bytes, tổng buffer hiện tại = {buffer.Length}");
 
                 while (true)
                 {
                     // Chưa đủ header
                     if (buffer.Length < 3)
                     {
-                        Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}] 🟡 Chưa đủ header (mới có {buffer.Length}/3 bytes).");
+                        //Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}] 🟡 Chưa đủ header (mới có {buffer.Length}/3 bytes).");
                         break;
                     }
 
@@ -150,20 +152,51 @@ public class Main : MonoBehaviour
                     sbyte cmd = (sbyte)buf[0];
                     ushort size = (ushort)((buf[1] << 8) | buf[2]);
 
-                    // Kiểm tra size bất thường
-                    //if (size > 5000)
-                    //{
-                    //    Debug.LogError($"[{DateTime.Now:HH:mm:ss.fff}] 🚨 Gói bất thường: CMD={cmd}, size={size}, buffer={buffer.Length}");
-                    //    Debug.LogError($"[{DateTime.Now:HH:mm:ss.fff}] ⛔ HEX: {BitConverter.ToString(buf, 0, Math.Min(32, buf.Length))}");
-                    //    buffer.SetLength(0);
-                    //    break;
-                    //}
+                    if (size > 10000)
+                    {
+                        string time = DateTime.Now.ToString("HH:mm:ss.fff");
+
+                        string logText =
+                            $"[{time}] 🚨 Gói bất thường: CMD={cmd}, size={size}, buffer={buffer.Length}\n" +
+                            $"[{time}] ⛔ HEX: {BitConverter.ToString(buf, 0, Math.Min(32, buf.Length))}\n";
+
+                        // 🔴 In cảnh báo ra console
+                        Debug.LogError(logText);
+
+                        // 🧊 Hiển thị CMD bất thường trên màn hình
+                        GameObject alertObj = new GameObject("AbnormalPacketAlert");
+                        Canvas canvas = alertObj.AddComponent<Canvas>();
+                        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                        alertObj.AddComponent<CanvasScaler>();
+                        alertObj.AddComponent<GraphicRaycaster>();
+
+                        GameObject textObj = new GameObject("AlertText");
+                        textObj.transform.SetParent(alertObj.transform, false);
+                        var tmp = textObj.AddComponent<TMPro.TextMeshProUGUI>();
+                        tmp.text = $"🚨 CMD={cmd}\nSIZE={size}\nĐã bị đóng băng.";
+                        tmp.fontSize = 48;
+                        tmp.color = Color.red;
+                        tmp.alignment = TMPro.TextAlignmentOptions.Center;
+                        tmp.rectTransform.sizeDelta = new Vector2(800, 400);
+                        tmp.rectTransform.anchoredPosition = Vector2.zero;
+
+                        // 🧱 Đóng băng toàn bộ game (ngừng Update, animation, physics)
+                        Time.timeScale = 0f;
+
+#if UNITY_EDITOR
+                        Debug.Break(); // Chỉ dừng Editor, không ảnh hưởng khi build
+#endif
+
+                        isRunning = false;
+                        break;
+                    }
+
 
                     // Nếu chưa đủ dữ liệu cho gói này
                     if (buffer.Length < 3 + size)
                     {
-                        Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}] ⏳ Gói CMD={cmd} (0x{cmd:X2}) CHƯA ĐỦ: {buffer.Length}/{3 + size} bytes.");
-                        Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}]    HEX hiện tại: {BitConverter.ToString(buf, 0, (int)buffer.Length)}");
+                        //Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}] ⏳ Gói CMD={cmd} (0x{cmd:X2}) CHƯA ĐỦ: {buffer.Length}/{3 + size} bytes.");
+                        //Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}]    HEX hiện tại: {BitConverter.ToString(buf, 0, (int)buffer.Length)}");
                         break;
                     }
 
@@ -178,7 +211,7 @@ public class Main : MonoBehaviour
                     if (remaining > 0)
                         buffer.Write(buf, 3 + size, remaining);
 
-                    Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}] ✅ Gói HOÀN CHỈNH: CMD={cmd} (0x{cmd:X2}), size={size}, data đầu={BitConverter.ToString(data, 0, Math.Min(8, data.Length))}");
+                    //Debug.Log($"[{DateTime.Now:HH:mm:ss.fff}] ✅ Gói HOÀN CHỈNH: CMD={cmd} (0x{cmd:X2}), size={size}, data đầu={BitConverter.ToString(data, 0, Math.Min(8, data.Length))}");
                     HandleCommand(cmd, data);
                 }
             }
@@ -189,7 +222,6 @@ public class Main : MonoBehaviour
             {
                 EnqueueMainThread(() =>
                 {
-                    Debug.LogWarning($"[{DateTime.Now:HH:mm:ss.fff}] Mất kết nối server: {ex.Message}");
                     if (boxAlertUI != null)
                     {
                         SocketManager.Instance.ResetConnection();
@@ -197,8 +229,6 @@ public class Main : MonoBehaviour
                         listenThread = null;
                         boxAlertUI.Band("Máy chủ hiện đang bảo trì");
                     }
-                    else
-                        Debug.LogWarning($"[{DateTime.Now:HH:mm:ss.fff}] ⚠️ boxAlertUI chưa được gán trong Main");
                 });
             }
             else
@@ -351,7 +381,9 @@ public class Main : MonoBehaviour
                 case CMD_SKILL_COUNTDOWN:
                     SafeInvoke("handleSkill", () => skill.handleSkill(data));
                     break;
-
+                case CMD_CHAT:
+                    SafeInvoke("HandleChat", () => playerHandler.HandleChat(data));
+                    break;
                 default:
                     Debug.Log($"📥 Nhận command khác: 0x{cmd:X2} ({data.Length} bytes)");
                     break;

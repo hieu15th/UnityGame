@@ -43,7 +43,6 @@ public class MessageManager : MonoBehaviour
             var writer = SocketManager.Instance.Writer;
             if (writer == null)
             {
-                Debug.LogWarning("⚠️ Writer chưa được khởi tạo.");
                 return;
             }
 

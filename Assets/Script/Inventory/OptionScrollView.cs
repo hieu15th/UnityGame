@@ -41,8 +41,8 @@ public class OptionScrollView : MonoBehaviour
                     tmpText.enableWordWrapping = true;
                     tmpText.overflowMode = TextOverflowModes.Overflow;
                     tmpText.text = name;
-                    tmpText.fontSize = 12f;
-                    tmpText.fontStyle = FontStyles.Italic;
+                    tmpText.fontSize = 10f;
+                    tmpText.fontStyle = FontStyles.Bold;
 
                     if (upgrade > 0)
                     {
@@ -82,7 +82,7 @@ public class OptionScrollView : MonoBehaviour
                             tmpText.text = $"{opt.name}";
                         }
                     }
-                    tmpText.fontSize = 10f;
+                    tmpText.fontSize = 8f;
                     tmpText.fontStyle = FontStyles.Normal;
                     tmpText.color = GetColorFromOption(opt.color);
                 }
@@ -131,8 +131,8 @@ public class OptionScrollView : MonoBehaviour
         int group = (upgrade - 1) / 4;
         return group switch
         {
-            0 => Color.green,
-            1 => Color.yellow,
+            0 => Color.yellow,
+            1 => Color.green,
             2 => Color.cyan,
             3 => Color.red,
             4 => Color.magenta,
@@ -153,8 +153,8 @@ public class OptionScrollView : MonoBehaviour
     {
         switch (colorCode)
         {
-            case 1: return Color.green;
-            case 2: return Color.blue;
+            case 1: return Color.yellow;
+            case 2: return Color.green;
             case 3: return Color.magenta;
             case 4: return Color.yellow;
             case 5: return Color.black;

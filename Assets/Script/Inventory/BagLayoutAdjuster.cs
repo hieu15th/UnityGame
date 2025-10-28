@@ -190,7 +190,7 @@ public class BagLayoutAdjuster : MonoBehaviour, ISlotSelectable
         int finalRight = paddingBase + paddingRightExtra;
 
         // Debug để bạn kiểm tra
-        Debug.Log($"AdjustSlotSize: totalWidth={totalWidth} availableWidth={availableWidth} slotWidth={slotWidth} usedInnerWidth={usedInnerWidth} totalUsedWidth={totalUsedWidth} remaining={remaining} paddingL={finalLeft} paddingR={finalRight}");
+        //Debug.Log($"AdjustSlotSize: totalWidth={totalWidth} availableWidth={availableWidth} slotWidth={slotWidth} usedInnerWidth={usedInnerWidth} totalUsedWidth={totalUsedWidth} remaining={remaining} paddingL={finalLeft} paddingR={finalRight}");
 
         // Áp dụng GridLayoutGroup
         gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
@@ -244,7 +244,7 @@ public class BagLayoutAdjuster : MonoBehaviour, ISlotSelectable
 
                     int optionCount = ReadInt32BigEndian(reader);
 
-                    Debug.Log($"🧱 Item[{i}] - Index: {index}, ID: {itemId}, Color: {color}, Type: {type}, Img: {img}, Upgrade: {upgrade}, Quantity: {quantity}, Name: {itemName}, OptionCount: {optionCount}");
+                    //Debug.Log($"🧱 Item[{i}] - Index: {index}, ID: {itemId}, Color: {color}, Type: {type}, Img: {img}, Upgrade: {upgrade}, Quantity: {quantity}, Name: {itemName}, OptionCount: {optionCount}");
 
                     List<OptionData> options = new List<OptionData>
                 {

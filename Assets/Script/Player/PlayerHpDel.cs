@@ -9,7 +9,6 @@ public class PlayerHpDel : MonoBehaviour
     [SerializeField] private GameObject m_gameObject;      // GameObject chứa chữ
     [SerializeField] private GameObject textPrefab;        // Prefab chứa chữ
     [SerializeField] private Vector3 textPositionOffset;   // Vị trí lệch của chữ so với m_gameObject
-    public TMP_SpriteAsset hpSpriteAsset;
     private float moveDuration = 1f; // Thời gian di chuyển lên (1 giây)
     private int hp_old;
     public Animator eff_blood;
@@ -27,11 +26,21 @@ public class PlayerHpDel : MonoBehaviour
         TextMeshPro tmpText = textObj.GetComponent<TextMeshPro>();
         if (tmpText != null)
         {
-            tmpText.spriteAsset = hpSpriteAsset;
-            tmpText.fontSize = 12;
-            tmpText.text = "- <size=80%><sprite=0></size>    " + text; // chỉ scale icon
+            tmpText.fontSize = 18;
+            tmpText.fontStyle = FontStyles.Bold | FontStyles.Italic;
+            tmpText.text = $"<b>-{text}</b>";
+
+
+            // ✅ ép text hiển thị trên player
+            var renderer = tmpText.GetComponent<MeshRenderer>();
+            if (renderer != null)
+            {
+                renderer.sortingLayerName = "Player"; // hoặc "UI"
+                renderer.sortingOrder = 50;
+            }
         }
     }
+
 
     private IEnumerator MoveTextUp(GameObject textObj)
     {

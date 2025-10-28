@@ -9,7 +9,6 @@ public class MobHpDel : MonoBehaviour
     [SerializeField] private Vector3 textPositionOffset; // Vị trí lệch của chữ so với m_gameObject
     private GameObject currentText;
     private float moveDuration = 1f; // Thời gian di chuyển lên (1 giây)
-    public TMP_SpriteAsset dame;
     // Coroutine để di chuyển chữ lên trên trong 1 giây
     private IEnumerator MoveTextUp()
     {
@@ -53,7 +52,6 @@ public class MobHpDel : MonoBehaviour
             TextMeshPro tmpText = currentText.GetComponent<TextMeshPro>();
             if (tmpText != null)
             {
-                tmpText.spriteAsset = dame;
 
                 // Xác định màu dựa vào type
                 Color color = Color.white;
@@ -61,15 +59,18 @@ public class MobHpDel : MonoBehaviour
                     color = Color.red;
                 else if (type == 2)
                     color = Color.green;
-                // ... thêm các loại khác nếu cần
 
                 string colorHex = ColorUtility.ToHtmlStringRGB(color);
-                tmpText.fontSize = 20;
-                tmpText.fontStyle = FontStyles.Bold | FontStyles.Italic;
-                // Dấu '-' luôn trắng, còn phần sau đổi màu
+
+                // Luôn in đậm
+                tmpText.fontSize = 25;
+                tmpText.fontStyle = FontStyles.Italic;
+
+                // Dấu '-' luôn trắng, phần sau có màu riêng — toàn bộ đều Bold
                 tmpText.text =
-                    $"<color=#FFFFFF>-</color> <color=#{colorHex}><size=70%><sprite=0></size>    {text}</color>";
+                    $"<b><color=#{colorHex}>-{text}</color></b>";
             }
+
         }
     }
 
